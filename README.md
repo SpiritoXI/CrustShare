@@ -4,7 +4,7 @@
 ![Platform](https://img.shields.io/badge/platform-Cloudflare_Pages-orange)
 ![Storage](https://img.shields.io/badge/storage-Crust_Network-green)
 ![Security](https://img.shields.io/badge/security-Enterprise%20Level-green)
-![Version](https://img.shields.io/badge/version-v2.2.0-purple)
+![Version](https://img.shields.io/badge/version-v2.2.1-purple)
 
 **CloudChan** 是一个极简主义的无服务器（Serverless）Web3 个人网盘解决方案。
 它采用 **Hybrid 直连架构**：利用 Cloudflare Functions 作为安全发卡中心，前端获取授权后 **直连 Crust Network 官方网关** 进行高速上传。
@@ -24,7 +24,7 @@
 
 ### 方式二：快速体验
 
-**当前版本**: v2.2.0（2026-01-22）
+**当前版本**: v2.2.1（2026-01-22）
 
 **最新特性**:
 - ✨ 全新 UI 设计，现代化 Glassmorphism 风格
