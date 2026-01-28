@@ -25,22 +25,22 @@ export default function StorageStats() {
       title: '总文件数',
       value: totalFiles,
       icon: FileIcon,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
+      gradient: 'from-blue-500 to-blue-600',
+      textColor: 'text-blue-600',
     },
     {
       title: '已完成',
       value: completedFiles,
       icon: HardDrive,
-      color: 'text-green-500',
-      bgColor: 'bg-green-500/10',
+      gradient: 'from-green-500 to-green-600',
+      textColor: 'text-green-600',
     },
     {
       title: '总存储空间',
       value: formatFileSize(totalSize),
       icon: Folder,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-500/10',
+      gradient: 'from-purple-500 to-pink-600',
+      textColor: 'text-purple-600',
     },
   ];
 
@@ -49,17 +49,19 @@ export default function StorageStats() {
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
-          <Card key={stat.title}>
+          <Card key={stat.title} className="crystal-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {stat.title}
               </CardTitle>
-              <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                <Icon className={`h-4 w-4 ${stat.color}`} />
+              <div className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br ${stat.gradient} text-white shadow-lg`}>
+                <Icon className="h-5 w-5" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
+              <div className={`text-2xl font-bold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}>
+                {stat.value}
+              </div>
             </CardContent>
           </Card>
         );

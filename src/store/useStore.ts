@@ -25,9 +25,11 @@ interface StoreState {
   setSearchTerm: (term: string) => void;
   toggleFileSelection: (id: string) => void;
   clearSelection: () => void;
+  fileExists: (name: string) => boolean;
+  getFileByName: (name: string) => FileItem | undefined;
 }
 
-const useStore = create<StoreState>((set) => ({
+const useStore = create<StoreState>((set, get) => ({
   isAuthenticated: false,
   password: '',
   files: [],
@@ -52,6 +54,14 @@ const useStore = create<StoreState>((set) => ({
         : [...state.selectedFiles, id],
     })),
   clearSelection: () => set({ selectedFiles: [] }),
+  fileExists: (name: string): boolean => {
+    const state = get();
+    return state.files.some((file: FileItem) => file.name === name);
+  },
+  getFileByName: (name: string): FileItem | undefined => {
+    const state = get();
+    return state.files.find((file: FileItem) => file.name === name);
+  },
 }));
 
 export default useStore;

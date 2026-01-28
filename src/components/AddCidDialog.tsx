@@ -109,10 +109,12 @@ export default function AddCidDialog({ onClose }: AddCidDialogProps) {
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="crystal-dialog sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>添加 CID</span>
+            <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              添加 CID
+            </span>
             <Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6">
               <X className="h-4 w-4" />
             </Button>
@@ -136,7 +138,7 @@ export default function AddCidDialog({ onClose }: AddCidDialogProps) {
                 placeholder="例如: QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG"
                 value={singleCid}
                 onChange={(e) => setSingleCid(e.target.value)}
-                className="font-mono"
+                className="crystal-input font-mono"
               />
               <p className="text-xs text-muted-foreground">
                 输入有效的 IPFS CID（以 Qm 开头，至少 44 个字符）
@@ -144,10 +146,10 @@ export default function AddCidDialog({ onClose }: AddCidDialogProps) {
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={onClose}>
+              <Button variant="outline" onClick={onClose} className="crystal-card">
                 取消
               </Button>
-              <Button onClick={handleSingleAdd} disabled={!singleCid.trim()}>
+              <Button onClick={handleSingleAdd} disabled={!singleCid.trim()} className="crystal-button text-white">
                 <Plus className="mr-2 h-4 w-4" />
                 添加
               </Button>
@@ -162,7 +164,7 @@ export default function AddCidDialog({ onClose }: AddCidDialogProps) {
                 placeholder="每行一个 CID&#10;QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG&#10;QmXxx..."
                 value={batchCids}
                 onChange={(e) => setBatchCids(e.target.value)}
-                className="font-mono min-h-[150px]"
+                className="crystal-input font-mono min-h-[150px]"
               />
               <p className="text-xs text-muted-foreground">
                 每行输入一个 CID，空行会被自动忽略
@@ -170,10 +172,10 @@ export default function AddCidDialog({ onClose }: AddCidDialogProps) {
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={onClose}>
+              <Button variant="outline" onClick={onClose} className="crystal-card">
                 取消
               </Button>
-              <Button onClick={handleBatchAdd} disabled={!batchCids.trim()}>
+              <Button onClick={handleBatchAdd} disabled={!batchCids.trim()} className="crystal-button text-white">
                 <Plus className="mr-2 h-4 w-4" />
                 批量添加
               </Button>

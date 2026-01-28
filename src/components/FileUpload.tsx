@@ -26,9 +26,18 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
 
   const addFile = useStore((state) => state.addFile);
   const updateFile = useStore((state) => state.updateFile);
+  const fileExists = useStore((state) => state.fileExists);
 
   useEffect(() => {
     const uploadFile = async () => {
+      // 检查文件是否已存在
+      if (fileExists(file.name)) {
+        toast.error(`文件 "${file.name}" 已存在，请先删除或重命名`);
+        setStatus('error');
+        setError('文件已存在');
+        return;
+      }
+
       const fileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       // 添加文件到列表
@@ -70,7 +79,7 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
     };
 
     uploadFile();
-  }, [file, addFile, updateFile]);
+  }, [file, addFile, updateFile, fileExists]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -82,10 +91,12 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="crystal-dialog sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>文件上传</span>
+            <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              文件上传
+            </span>
             <Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6">
               <X className="h-4 w-4" />
             </Button>
@@ -99,9 +110,11 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
 
         <div className="space-y-4">
           {/* 文件信息 */}
-          <div className="flex items-start space-x-4 p-4 bg-muted/50 rounded-lg">
+          <div className="flex items-start space-x-4 p-4 crystal-card rounded-lg">
             <div className="flex-shrink-0">
-              <FileIcon className="h-10 w-10 text-muted-foreground" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20">
+                <FileIcon className="h-6 w-6 text-purple-600" />
+              </div>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{file.name}</p>
@@ -110,10 +123,10 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
               </p>
             </div>
             {status === 'completed' && (
-              <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+              <CheckCircle className="h-6 w-6 text-green-500 flex-shrink-0" />
             )}
             {status === 'error' && (
-              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+              <AlertCircle className="h-6 w-6 text-red-500 flex-shrink-0" />
             )}
           </div>
 
@@ -121,24 +134,28 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">上传进度</span>
-              <span className="font-medium">{progress}%</span>
+              <span className="font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                {progress}%
+              </span>
             </div>
-            <Progress value={progress} className="h-2" />
+            <div className="crystal-progress h-2">
+              <div className="crystal-progress-bar" style={{ width: `${progress}%` }} />
+            </div>
           </div>
 
           {/* 操作按钮 */}
           <div className="flex justify-end gap-2">
             {status === 'completed' && (
-              <Button onClick={onClose}>关闭</Button>
+              <Button onClick={onClose} className="crystal-button text-white">关闭</Button>
             )}
             {status === 'error' && (
               <>
-                <Button variant="outline" onClick={onClose}>关闭</Button>
-                <Button onClick={onClose}>重试</Button>
+                <Button variant="outline" onClick={onClose} className="crystal-card">关闭</Button>
+                <Button onClick={onClose} className="crystal-button text-white">重试</Button>
               </>
             )}
             {status === 'uploading' && (
-              <Button variant="outline" onClick={onClose}>取消</Button>
+              <Button variant="outline" onClick={onClose} className="crystal-card">取消</Button>
             )}
           </div>
         </div>

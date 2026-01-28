@@ -35,13 +35,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 p-4">
-      <Card className="w-full max-w-md shadow-2xl">
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100" />
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIgZmlsbD0icmdiYSg5OSwgMTAyLCAyNDEsIDAuMSkiLz48L3N2Zz4=')] opacity-30" />
+
+      <Card className="relative w-full max-w-md crystal-card crystal-dialog">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <Lock className="h-8 w-8 text-primary" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg">
+            <Lock className="h-8 w-8" />
           </div>
-          <CardTitle className="text-2xl font-bold">CrustShare</CardTitle>
+          <CardTitle className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-2xl font-bold text-transparent">
+            CrustShare
+          </CardTitle>
           <CardDescription className="text-base">
             安全的分布式文件存储平台
           </CardDescription>
@@ -55,7 +60,7 @@ export default function LoginPage() {
                   placeholder="请输入访问密码"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 text-base pr-12"
+                  className="crystal-input h-12 text-base pr-12"
                   autoFocus
                 />
                 <Shield className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -63,7 +68,7 @@ export default function LoginPage() {
             </div>
             <Button
               type="submit"
-              className="w-full h-12 text-base font-medium"
+              className="crystal-button w-full h-12 text-base font-medium text-white"
               disabled={isLoading || !password}
             >
               {isLoading ? '验证中...' : '登录'}

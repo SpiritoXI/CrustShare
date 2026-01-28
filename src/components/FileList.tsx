@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -16,9 +17,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { FileIcon, MoreVertical, CheckCircle, AlertCircle, Clock, Copy, Edit2, Trash2 } from 'lucide-react';
+import { FileIcon, MoreVertical, CheckCircle, AlertCircle, Clock, Copy, Edit2, Trash2, Share2, Download } from 'lucide-react';
 import useStore from '@/store/useStore';
 import { toast } from 'sonner';
+import RenameDialog from './RenameDialog';
+import ShareDialog from './ShareDialog';
+import DownloadDialog from './DownloadDialog';
 
 interface FileListProps {
   files: Array<{
@@ -34,6 +38,10 @@ interface FileListProps {
 }
 
 export default function FileList({ files }: FileListProps) {
+  const [renameFileId, setRenameFileId] = useState<string | null>(null);
+  const [shareFileId, setShareFileId] = useState<string | null>(null);
+  const [downloadFile, setDownloadFile] = useState<{ id: string; name: string; cid: string } | null>(null);
+
   const deleteFile = useStore((state) => state.deleteFile);
   const updateFile = useStore((state) => state.updateFile);
 
@@ -82,21 +90,22 @@ export default function FileList({ files }: FileListProps) {
   const getStatusBadge = (status: string, progress?: number) => {
     switch (status) {
       case 'completed':
-        return <Badge variant="default" className="bg-green-500">已完成</Badge>;
+        return <Badge className="crystal-badge crystal-badge-success">已完成</Badge>;
       case 'error':
-        return <Badge variant="destructive">上传失败</Badge>;
+        return <Badge className="crystal-badge crystal-badge-danger">上传失败</Badge>;
       case 'uploading':
-        return <Badge variant="outline">上传中 {progress}%</Badge>;
+        return <Badge className="crystal-badge crystal-badge-warning">上传中 {progress}%</Badge>;
       default:
-        return <Badge variant="outline">未知</Badge>;
+        return <Badge className="crystal-badge">未知</Badge>;
     }
   };
 
   return (
-    <div className="rounded-md border">
+    <>
+      <div className="rounded-lg overflow-hidden crystal-card">
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="border-b border-purple-200/30">
             <TableHead className="w-[50px]"></TableHead>
             <TableHead>文件名</TableHead>
             <TableHead className="hidden sm:table-cell">大小</TableHead>
@@ -108,9 +117,9 @@ export default function FileList({ files }: FileListProps) {
         </TableHeader>
         <TableBody>
           {files.map((file) => (
-            <TableRow key={file.id}>
+            <TableRow key={file.id} className="crystal-table-row border-b border-purple-100/30">
               <TableCell>
-                <FileIcon className="h-4 w-4 text-muted-foreground" />
+                <FileIcon className="h-4 w-4 text-purple-600 crystal-icon" />
               </TableCell>
               <TableCell className="font-medium max-w-[200px] truncate">{file.name}</TableCell>
               <TableCell className="hidden sm:table-cell">{formatFileSize(file.size)}</TableCell>
@@ -120,13 +129,13 @@ export default function FileList({ files }: FileListProps) {
               <TableCell className="hidden md:table-cell">
                 {file.cid ? (
                   <div className="flex items-center gap-2">
-                    <code className="text-xs bg-muted px-2 py-1 rounded max-w-[100px] truncate">
+                    <code className="text-xs crystal-badge bg-purple-500/10 px-2 py-1 rounded max-w-[100px] truncate">
                       {file.cid}
                     </code>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
+                      className="h-6 w-6 crystal-icon"
                       onClick={() => handleCopyCID(file.cid!)}
                     >
                       <Copy className="h-3 w-3" />
@@ -140,11 +149,18 @@ export default function FileList({ files }: FileListProps) {
               <TableCell>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 crystal-icon">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="crystal-dialog">
+                    <DropdownMenuItem
+                      onClick={() => setDownloadFile({ id: file.id, name: file.name, cid: file.cid! })}
+                      disabled={!file.cid}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      下载
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleCopyCID(file.cid!)}
                       disabled={!file.cid}
@@ -153,10 +169,14 @@ export default function FileList({ files }: FileListProps) {
                       复制 CID
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => {
-                        // TODO: 实现重命名功能
-                        toast.info('重命名功能即将上线');
-                      }}
+                      onClick={() => setShareFileId(file.id)}
+                      disabled={!file.cid}
+                    >
+                      <Share2 className="mr-2 h-4 w-4" />
+                      分享文件
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setRenameFileId(file.id)}
                     >
                       <Edit2 className="mr-2 h-4 w-4" />
                       重命名
@@ -176,5 +196,29 @@ export default function FileList({ files }: FileListProps) {
         </TableBody>
       </Table>
     </div>
+
+    {renameFileId && (
+      <RenameDialog
+        fileId={renameFileId}
+        onClose={() => setRenameFileId(null)}
+      />
+    )}
+
+    {shareFileId && (
+      <ShareDialog
+        fileId={shareFileId}
+        onClose={() => setShareFileId(null)}
+      />
+    )}
+
+    {downloadFile && (
+      <DownloadDialog
+        fileId={downloadFile.id}
+        fileName={downloadFile.name}
+        cid={downloadFile.cid}
+        onClose={() => setDownloadFile(null)}
+      />
+    )}
+  </>
   );
 }
