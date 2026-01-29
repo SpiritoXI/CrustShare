@@ -44,7 +44,6 @@ export default function FileList({ files }: FileListProps) {
   const [shareFileId, setShareFileId] = useState<string | null>(null);
   const [downloadFile, setDownloadFile] = useState<{ id: string; name: string; cid: string } | null>(null);
   const [versionFile, setVersionFile] = useState<{ id: string; name: string } | null>(null);
-  const [permissionFile, setPermissionFile] = useState<{ id: string; name: string } | null>(null);
   const [previewFile, setPreviewFile] = useState<{
     id: string;
     name: string;
@@ -230,13 +229,6 @@ export default function FileList({ files }: FileListProps) {
                     >
                       <History className="mr-2 h-4 w-4" />
                       版本历史
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setPermissionFile({ id: file.id, name: file.name })}
-                      disabled={!file.cid}
-                    >
-                      <Shield className="mr-2 h-4 w-4" />
-                      权限管理
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => setRenameFileId(file.id)}

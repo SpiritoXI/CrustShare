@@ -13,7 +13,7 @@ CrustShare 现已集成 CrustFiles.io 网关，提供更稳定和快速的文件
 - ✅ 使用 Access Token 进行认证
 - ✅ 文件下载使用 CrustFiles.io 网关
 - ✅ 返回标准的 IPFS CID
-- ✅ 文件大小限制：100MB
+- ✅ 文件大小限制：1GB
 
 ---
 
@@ -138,7 +138,7 @@ const data = await response.json();
 
 - API 端点：`/api/crustfiles/upload`
 - 认证方式：Access Token
-- 文件大小限制：100MB
+- 文件大小限制：1GB
 - 返回：IPFS CID + 访问 URL
 
 ### 3. 文件下载
@@ -257,7 +257,7 @@ const response = await fetch(uploadUrl, {
 
 ### 问题 4：上传失败 - "文件大小超过限制"
 
-**原因**：文件超过 100MB
+**原因**：文件超过 1GB
 
 **解决**：压缩文件或使用其他方式上传
 
@@ -328,7 +328,7 @@ tail -f /app/work/logs/bypass/dev.log | grep "CrustFiles"
 
 ## 未来计划
 
-- [ ] 支持更大的文件（> 100MB）
+- [ ] 支持更大的文件（> 1GB）
 - [ ] 分片上传
 - [ ] 断点续传
 - [ ] 批量上传

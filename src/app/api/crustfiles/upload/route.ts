@@ -18,11 +18,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查文件大小（限制：100MB）
-    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+    // 检查文件大小（限制：1GB）
+    const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { success: false, error: '文件大小超过限制（最大 100MB）' },
+        { success: false, error: '文件大小超过限制（最大 1GB）' },
         { status: 400 }
       );
     }

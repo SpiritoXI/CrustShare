@@ -39,7 +39,7 @@ CRUSTFILES_BASE_URL=https://crustfiles.io
 ```json
 {
   "success": false,
-  "error": "未找到文件" | "文件大小超过限制（最大 100MB）"
+  "error": "未找到文件" | "文件大小超过限制（最大 1GB）"
 }
 ```
 
@@ -92,5 +92,5 @@ const blob = await response.blob();
 - ✅ 基于 CrustFiles.io 网关
 - ✅ 使用 Access Token 认证
 - ✅ 返回 IPFS CID
-- ✅ 文件大小限制：100MB
+- ✅ 文件大小限制：1GB
 - ✅ 支持所有文件类型
