@@ -4,17 +4,15 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lock, Shield, User } from 'lucide-react';
+import { Lock, Shield } from 'lucide-react';
 import useStore from '@/store/useStore';
 import { toast } from 'sonner';
 
 // 默认密码（开发环境）
 const DEFAULT_PASSWORD = 'crustshare';
-const DEFAULT_ADMIN_PASSWORD = 'admin';
 
 export default function LoginPage() {
   const [password, setPassword] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const setIsAuthenticated = useStore((state) => state.setIsAuthenticated);
 
@@ -31,7 +29,6 @@ export default function LoginPage() {
         },
         body: JSON.stringify({
           password,
-          isAdmin,
         }),
       });
 
@@ -40,8 +37,7 @@ export default function LoginPage() {
       if (response.ok && data.success) {
         setIsAuthenticated(true);
         localStorage.setItem('crustshare_auth', 'true');
-        localStorage.setItem('crustshare_role', isAdmin ? 'admin' : 'user');
-        toast.success(isAdmin ? '管理员登录成功' : '登录成功');
+        toast.success('登录成功');
       } else {
         toast.error(data.error || '密码错误，请重试');
         setPassword('');
@@ -85,20 +81,6 @@ export default function LoginPage() {
                 />
                 <Shield className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="admin"
-                  checked={isAdmin}
-                  onChange={(e) => setIsAdmin(e.target.checked)}
-                  className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                />
-                <label htmlFor="admin" className="flex items-center space-x-2 text-sm text-muted-foreground cursor-pointer">
-                  <User className="h-4 w-4" />
-                  <span>管理员登录</span>
-                </label>
-              </div>
             </div>
 
             <Button
@@ -114,11 +96,6 @@ export default function LoginPage() {
             <p>请输入正确的密码以继续访问</p>
             <p className="text-xs">
               默认密码: <code className="bg-purple-50/60 px-2 py-1 rounded">crustshare</code>
-              {isAdmin && (
-                <span className="ml-2">
-                  管理员: <code className="bg-purple-50/60 px-2 py-1 rounded">admin</code>
-                </span>
-              )}
             </p>
           </div>
         </CardContent>

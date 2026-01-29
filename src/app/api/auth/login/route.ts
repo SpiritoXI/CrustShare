@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyPasswordHash, getPasswordHash, getAdminPasswordHash } from '@/lib/auth';
+import { verifyPasswordHash, getPasswordHash } from '@/lib/auth';
 
 /**
  * 登录 API 路由
- * 验证用户或管理员密码
+ * 验证用户密码
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { password, isAdmin = false } = body;
+    const { password } = body;
 
     if (!password) {
       return NextResponse.json(
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 获取正确的哈希值
-    const correctHash = isAdmin ? getAdminPasswordHash() : getPasswordHash();
+    const correctHash = getPasswordHash();
 
     // 验证密码
     const isValid = verifyPasswordHash(password, correctHash);
@@ -26,8 +26,7 @@ export async function POST(request: NextRequest) {
     if (isValid) {
       return NextResponse.json({
         success: true,
-        message: isAdmin ? '管理员登录成功' : '登录成功',
-        role: isAdmin ? 'admin' : 'user',
+        message: '登录成功',
       });
     } else {
       return NextResponse.json(

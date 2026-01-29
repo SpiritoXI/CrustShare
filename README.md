@@ -80,21 +80,12 @@ UPSTASH_REDIS_REST_TOKEN=your-redis-token
 # 密码配置（SHA-256 哈希值）
 # 默认密码：crustshare
 PASSWORD_HASH=5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8
-
-# 管理员密码（默认：admin）
-ADMIN_PASSWORD_HASH=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
-
-# JWT 配置（用于会话认证）
-CRUST_JWT_SECRET=your-jwt-secret-key-here
 ```
 
 **生成密码哈希**：
 
 ```bash
-# 使用脚本生成
-node scripts/generate-config.js
-
-# 或使用命令行
+# 使用命令行
 echo -n "your_password" | sha256sum
 ```
 
@@ -175,16 +166,14 @@ const response = await fetch('/api/auth/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    password: 'crustshare',
-    isAdmin: false
+    password: 'crustshare'
   })
 });
 ```
 
 - **密码加密**：SHA-256 哈希
-- **角色管理**：普通用户和管理员
 - **会话存储**：localStorage 或 Upstash Redis
-- **JWT 支持**：可选的 JWT 令牌验证
+- **单用户模式**：简化认证，无需角色管理
 
 #### 2. CrustFiles.io 代理（正向代理）
 
@@ -401,24 +390,12 @@ UPSTASH_REDIS_REST_TOKEN=your-redis-token
 
 # 密码配置（必须）
 PASSWORD_HASH=your_password_hash
-ADMIN_PASSWORD_HASH=your_admin_password_hash
-
-# JWT 配置（必须）
-CRUST_JWT_SECRET=your_jwt_secret
-
-# 应用配置（可选）
-NEXT_PUBLIC_APP_NAME=CrustShare
-NEXT_PUBLIC_APP_URL=https://your-domain.com
-
-# 环境模式（可选）
-NODE_ENV=production
 ```
 
 **配置说明**：
 
 1. **Upstash Redis**：用于会话管理和文件元数据持久化。如果未配置，将使用 localStorage（仅适用于开发/单用户场景）。
-2. **密码哈希**：必须配置。使用 `node scripts/generate-config.js` 生成。
-3. **JWT Secret**：用于生成和验证 JWT 令牌。使用脚本生成随机密钥。
+2. **密码哈希**：必须配置。使用 `echo -n "your_password" | sha256sum` 生成。
 
 ---
 

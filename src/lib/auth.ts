@@ -31,24 +31,3 @@ export function getPasswordHash(): string {
     sha256Hash('crustshare') // 默认密码的哈希
   );
 }
-
-/**
- * 从环境变量获取管理员密码哈希
- */
-export function getAdminPasswordHash(): string {
-  return (
-    process.env.ADMIN_PASSWORD_HASH ||
-    sha256Hash('admin') // 默认管理员密码的哈希
-  );
-}
-
-/**
- * 获取 JWT 密钥
- */
-export function getJwtSecret(): string {
-  if (!process.env.CRUST_JWT_SECRET) {
-    console.warn('CRUST_JWT_SECRET 未设置，使用默认值（仅用于开发）');
-    return 'default-jwt-secret-for-development-only';
-  }
-  return process.env.CRUST_JWT_SECRET;
-}
