@@ -11,11 +11,11 @@ export default function MobileNav() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild className="md:hidden">
-        <Button variant="ghost" size="icon" className="glass-card">
+        <Button variant="ghost" size="icon" className="crystal-card">
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="glass-dialog w-72">
+      <SheetContent side="left" className="crystal-dialog w-72">
         <div className="flex flex-col space-y-4 mt-8">
           <nav className="space-y-2">
             <Button

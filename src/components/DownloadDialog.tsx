@@ -91,7 +91,7 @@ export default function DownloadDialog({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="glass-dialog sm:max-w-md">
+      <DialogContent className="crystal-dialog sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span className="bg-gradient-to-r from-purple-500/80 to-pink-500/80 bg-clip-text text-transparent">
@@ -108,7 +108,7 @@ export default function DownloadDialog({
 
         <div className="space-y-4">
           {/* 文件信息 */}
-          <div className="p-4 glass-card rounded-lg space-y-2">
+          <div className="p-4 crystal-card rounded-lg space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <CloudDownload className="h-4 w-4 text-purple-500/70" />
               <span className="font-medium">文件信息</span>
@@ -132,22 +132,22 @@ export default function DownloadDialog({
                 <span className="text-muted-foreground">下载进度</span>
                 <span className="font-medium">{downloadProgress}%</span>
               </div>
-              <div className="glass-progress h-2">
-                <div className="glass-progress-bar" style={{ width: `${downloadProgress}%` }} />
+              <div className="crystal-progress h-2">
+                <div className="crystal-progress-bar" style={{ width: `${downloadProgress}%` }} />
               </div>
             </div>
           )}
 
           {/* 下载状态 */}
           {downloadStatus === 'completed' && (
-            <div className="flex items-center justify-center gap-2 p-4 glass-card rounded-lg">
+            <div className="flex items-center justify-center gap-2 p-4 crystal-card rounded-lg">
               <CheckCircle className="h-5 w-5 text-green-500/70" />
               <span className="text-sm font-medium">下载完成</span>
             </div>
           )}
 
           {downloadStatus === 'error' && (
-            <div className="flex items-center justify-center gap-2 p-4 glass-card rounded-lg">
+            <div className="flex items-center justify-center gap-2 p-4 crystal-card rounded-lg">
               <AlertCircle className="h-5 w-5 text-red-400/70" />
               <span className="text-sm text-red-500/80">{error}</span>
             </div>
@@ -156,24 +156,24 @@ export default function DownloadDialog({
           {/* 操作按钮 */}
           <div className="flex justify-end gap-2">
             {downloadStatus === 'idle' && (
-              <Button onClick={handleDownload} className="glass-button text-white">
+              <Button onClick={handleDownload} className="crystal-button text-white">
                 <Download className="mr-2 h-4 w-4" />
                 开始下载
               </Button>
             )}
             {downloadStatus === 'error' && (
               <>
-                <Button variant="outline" onClick={onClose} className="glass-card">
+                <Button variant="outline" onClick={onClose} className="crystal-card">
                   关闭
                 </Button>
-                <Button onClick={handleDownload} className="glass-button text-white">
+                <Button onClick={handleDownload} className="crystal-button text-white">
                   <RefreshCw className="mr-2 h-4 w-4" />
                   重试
                 </Button>
               </>
             )}
             {downloadStatus === 'completed' && (
-              <Button onClick={onClose} className="glass-button text-white">
+              <Button onClick={onClose} className="crystal-button text-white">
                 关闭
               </Button>
             )}

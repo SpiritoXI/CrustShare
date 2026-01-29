@@ -91,14 +91,12 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen relative">
-      {/* 漂浮的光晕效果 */}
-      <div className="glow-orb glow-orb-1" />
-      <div className="glow-orb glow-orb-2" />
-      <div className="glow-orb glow-orb-3" />
-
-      {/* 点缀纹理 */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIgZmlsbD0icmdiYSgxNjcsIDEzOSwgMjUwLCAwLjA4KSIvPjwvc3ZnPg==')] opacity-30" />
+    <div className="min-h-screen">
+      {/* 淡雅背景装饰 */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/30" />
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIgZmlsbD0icmdiYSg5OSwgMTAyLCAyNDEsIDAuMDUpIi8+PC9zdmc+')] opacity-20" />
+      <div className="absolute -top-60 -right-60 w-96 h-96 bg-purple-100/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-60 -left-60 w-96 h-96 bg-pink-100/30 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative container mx-auto px-4 py-8">
         {/* 头部 */}
@@ -112,10 +110,10 @@ export default function Dashboard() {
             </div>
             <div className="flex gap-2">
               <MobileNav />
-              <Button variant="outline" size="icon" onClick={handleRefresh} className="glass-card hidden md:flex">
+              <Button variant="outline" size="icon" onClick={handleRefresh} className="crystal-card hidden md:flex">
                 <RefreshCw className="h-4 w-4" />
               </Button>
-              <Button variant="outline" onClick={handleLogout} className="glass-card hidden md:flex">
+              <Button variant="outline" onClick={handleLogout} className="crystal-card hidden md:flex">
                 <LogOut className="mr-2 h-4 w-4" />
                 退出
               </Button>
@@ -131,7 +129,7 @@ export default function Dashboard() {
           {/* 左侧边栏 */}
           <div className="md:col-span-1 space-y-4 hidden md:block">
             {/* 文件夹树 */}
-            <Card className="glass-card">
+            <Card className="crystal-card">
               <CardHeader>
                 <CardTitle className="text-base">文件夹</CardTitle>
               </CardHeader>
@@ -141,14 +139,14 @@ export default function Dashboard() {
             </Card>
 
             {/* 标签管理 */}
-            <Card className="glass-card">
+            <Card className="crystal-card">
               <CardHeader>
                 <CardTitle className="text-base">标签</CardTitle>
               </CardHeader>
               <CardContent>
                 <Button
                   onClick={() => setShowTagManager(true)}
-                  className="w-full glass-button text-white"
+                  className="w-full crystal-button text-white"
                 >
                   <TagIcon className="mr-2 h-4 w-4" />
                   管理标签
@@ -161,7 +159,7 @@ export default function Dashboard() {
           <div className="md:col-span-3 space-y-4">
             {/* 批量操作工具栏 */}
             {selectedFiles.length > 0 && (
-              <Card className="glass-card border-purple-200/60 border-2">
+              <Card className="crystal-card border-purple-200/60 border-2">
                 <CardContent className="py-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -181,7 +179,7 @@ export default function Dashboard() {
                         variant="outline"
                         size="sm"
                         onClick={() => setShowMoveDialog(true)}
-                        className="glass-card"
+                        className="crystal-card"
                       >
                         移动到文件夹
                       </Button>
@@ -189,7 +187,7 @@ export default function Dashboard() {
                         variant="outline"
                         size="sm"
                         onClick={() => setShowTagManager(true)}
-                        className="glass-card"
+                        className="crystal-card"
                       >
                         添加标签
                       </Button>
@@ -197,7 +195,7 @@ export default function Dashboard() {
                         variant="outline"
                         size="sm"
                         onClick={handleBatchDelete}
-                        className="glass-card text-red-500 hover:text-red-600"
+                        className="crystal-card text-red-500 hover:text-red-600"
                       >
                         批量删除
                       </Button>
@@ -210,7 +208,7 @@ export default function Dashboard() {
             {/* 操作区域 */}
             <div className="grid gap-4 md:grid-cols-2">
               {/* 搜索框 */}
-              <Card className="glass-card">
+              <Card className="crystal-card">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">搜索文件</CardTitle>
                 </CardHeader>
@@ -222,14 +220,14 @@ export default function Dashboard() {
                       placeholder="搜索文件名..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="glass-input pl-10"
+                      className="crystal-input pl-10"
                     />
                   </div>
                 </CardContent>
               </Card>
 
               {/* 上传和添加 CID */}
-              <Card className="glass-card">
+              <Card className="crystal-card">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">文件操作</CardTitle>
                 </CardHeader>
@@ -240,7 +238,7 @@ export default function Dashboard() {
                       variant={uploadMethod === 's3' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setUploadMethod('s3')}
-                      className={`flex-1 ${uploadMethod === 's3' ? 'glass-button text-white' : 'glass-card'}`}
+                      className={`flex-1 ${uploadMethod === 's3' ? 'crystal-button text-white' : 'crystal-card'}`}
                     >
                       <HardDrive className="mr-2 h-4 w-4" />
                       对象存储
@@ -249,7 +247,7 @@ export default function Dashboard() {
                       variant={uploadMethod === 'crust' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setUploadMethod('crust')}
-                      className={`flex-1 ${uploadMethod === 'crust' ? 'glass-button text-white' : 'glass-card'}`}
+                      className={`flex-1 ${uploadMethod === 'crust' ? 'crystal-button text-white' : 'crystal-card'}`}
                     >
                       <Globe className="mr-2 h-4 w-4" />
                       Crust Network
@@ -264,11 +262,11 @@ export default function Dashboard() {
                       onChange={handleFileSelect}
                       className="hidden"
                     />
-                    <Button onClick={handleUploadClick} className="glass-button flex-1 text-white">
+                    <Button onClick={handleUploadClick} className="crystal-button flex-1 text-white">
                       <Upload className="mr-2 h-4 w-4" />
                       上传
                     </Button>
-                    <Button variant="outline" onClick={() => setShowAddCid(true)} className="glass-card">
+                    <Button variant="outline" onClick={() => setShowAddCid(true)} className="crystal-card">
                       <Plus className="mr-2 h-4 w-4" />
                       添加 CID
                     </Button>
@@ -282,7 +280,7 @@ export default function Dashboard() {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`glass-card transition-all ${isDragging ? 'border-purple-400 border-2' : ''}`}
+              className={`crystal-card transition-all ${isDragging ? 'border-purple-400 border-2' : ''}`}
             >
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">

@@ -92,7 +92,7 @@ export default function StorageStats() {
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
-          <Card key={stat.title} className="glass-card">
+          <Card key={stat.title} className="crystal-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {stat.title}

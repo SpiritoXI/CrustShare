@@ -84,19 +84,19 @@ export default function MobileFileList({ files }: FileListProps) {
   const getStatusBadge = (status: string, progress?: number) => {
     switch (status) {
       case 'completed':
-        return <Badge className="glass-badge glass-badge-success">已完成</Badge>;
+        return <Badge className="crystal-badge crystal-badge-success">已完成</Badge>;
       case 'error':
-        return <Badge className="glass-badge glass-badge-danger">失败</Badge>;
+        return <Badge className="crystal-badge crystal-badge-danger">失败</Badge>;
       case 'uploading':
-        return <Badge className="glass-badge glass-badge-warning">{progress}%</Badge>;
+        return <Badge className="crystal-badge crystal-badge-warning">{progress}%</Badge>;
       default:
-        return <Badge className="glass-badge">未知</Badge>;
+        return <Badge className="crystal-badge">未知</Badge>;
     }
   };
 
   if (files.length === 0) {
     return (
-      <Card className="glass-card p-8 text-center">
+      <Card className="crystal-card p-8 text-center">
         <FileIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
         <p className="text-muted-foreground">暂无文件</p>
       </Card>
@@ -107,7 +107,7 @@ export default function MobileFileList({ files }: FileListProps) {
     <>
       <div className="space-y-3">
         {files.map((file) => (
-          <Card key={file.id} className="glass-card p-4">
+          <Card key={file.id} className="crystal-card p-4">
             <div className="flex items-start gap-3">
               {/* 文件图标和复选框 */}
               <div className="flex flex-col items-center gap-2">
@@ -139,11 +139,11 @@ export default function MobileFileList({ files }: FileListProps) {
               {/* 操作菜单 */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 glass-icon">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 crystal-icon">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="glass-dialog">
+                <DropdownMenuContent align="end" className="crystal-dialog">
                   <DropdownMenuItem
                     onClick={() => setDownloadFile({ id: file.id, name: file.name, cid: file.cid! })}
                     disabled={!file.cid}

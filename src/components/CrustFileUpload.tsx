@@ -116,7 +116,7 @@ export default function CrustFileUpload({ file, onClose }: CrustFileUploadProps)
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="glass-dialog sm:max-w-md">
+      <DialogContent className="crystal-dialog sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -138,7 +138,7 @@ export default function CrustFileUpload({ file, onClose }: CrustFileUploadProps)
 
         <div className="space-y-4">
           {/* 文件信息 */}
-          <div className="flex items-start space-x-4 p-4 glass-card rounded-lg">
+          <div className="flex items-start space-x-4 p-4 crystal-card rounded-lg">
             <div className="flex-shrink-0">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-400/20 to-pink-400/20">
                 <FileIcon className="h-6 w-6 text-purple-500/80" />
@@ -160,7 +160,7 @@ export default function CrustFileUpload({ file, onClose }: CrustFileUploadProps)
 
           {/* CID 信息 */}
           {cid && (
-            <div className="p-4 glass-card rounded-lg">
+            <div className="p-4 crystal-card rounded-lg">
               <div className="flex items-center gap-2 text-sm mb-2">
                 <Globe className="h-4 w-4 text-purple-500/70" />
                 <span className="font-medium">CID</span>
@@ -179,24 +179,24 @@ export default function CrustFileUpload({ file, onClose }: CrustFileUploadProps)
                 {progress}%
               </span>
             </div>
-            <div className="glass-progress h-2">
-              <div className="glass-progress-bar" style={{ width: `${progress}%` }} />
+            <div className="crystal-progress h-2">
+              <div className="crystal-progress-bar" style={{ width: `${progress}%` }} />
             </div>
           </div>
 
           {/* 操作按钮 */}
           <div className="flex justify-end gap-2">
             {status === 'completed' && (
-              <Button onClick={onClose} className="glass-button text-white">关闭</Button>
+              <Button onClick={onClose} className="crystal-button text-white">关闭</Button>
             )}
             {status === 'error' && (
               <>
-                <Button variant="outline" onClick={onClose} className="glass-card">关闭</Button>
-                <Button onClick={uploadToCrust} className="glass-button text-white">重试</Button>
+                <Button variant="outline" onClick={onClose} className="crystal-card">关闭</Button>
+                <Button onClick={uploadToCrust} className="crystal-button text-white">重试</Button>
               </>
             )}
             {status === 'uploading' && (
-              <Button variant="outline" onClick={onClose} className="glass-card">取消</Button>
+              <Button variant="outline" onClick={onClose} className="crystal-card">取消</Button>
             )}
           </div>
         </div>

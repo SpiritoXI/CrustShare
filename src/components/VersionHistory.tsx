@@ -122,7 +122,7 @@ export default function VersionHistory({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-dialog sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="crystal-dialog sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="h-5 w-5 text-purple-500/70" />
@@ -137,7 +137,7 @@ export default function VersionHistory({
 
         <div className="flex-1 overflow-y-auto space-y-4">
           {/* 创建新版本 */}
-          <div className="p-4 glass-card rounded-lg">
+          <div className="p-4 crystal-card rounded-lg">
             <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
               <FileIcon className="h-4 w-4" />
               创建新版本
@@ -147,9 +147,9 @@ export default function VersionHistory({
                 placeholder="输入版本备注（可选）"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                className="glass-input flex-1"
+                className="crystal-input flex-1"
               />
-              <Button onClick={handleCreateVersion} className="glass-button text-white">
+              <Button onClick={handleCreateVersion} className="crystal-button text-white">
                 <RefreshCw className="mr-2 h-4 w-4" />
                 创建版本
               </Button>
@@ -170,7 +170,7 @@ export default function VersionHistory({
                 .map((version) => (
                   <div
                     key={version.id}
-                    className={`p-4 glass-card rounded-lg ${
+                    className={`p-4 crystal-card rounded-lg ${
                       version.version === currentVersion
                         ? 'border-purple-300/60 border-2'
                         : ''
@@ -187,14 +187,14 @@ export default function VersionHistory({
                             }
                             className={
                               version.version === currentVersion
-                                ? 'glass-badge glass-badge-primary'
-                                : 'glass-badge'
+                                ? 'crystal-badge crystal-badge-primary'
+                                : 'crystal-badge'
                             }
                           >
                             版本 {version.version}
                           </Badge>
                           {version.version === currentVersion && (
-                            <Badge className="glass-badge glass-badge-success">
+                            <Badge className="crystal-badge crystal-badge-success">
                               当前版本
                             </Badge>
                           )}
@@ -234,7 +234,7 @@ export default function VersionHistory({
                                 version.size
                               )
                             }
-                            className="glass-card"
+                            className="crystal-card"
                           >
                             <RefreshCw className="h-3 w-3 mr-1" />
                             恢复
@@ -245,7 +245,7 @@ export default function VersionHistory({
                             size="sm"
                             variant="outline"
                             onClick={() => handleDeleteVersion(version.version)}
-                            className="glass-card text-red-400/80 hover:text-red-500"
+                            className="crystal-card text-red-400/80 hover:text-red-500"
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>

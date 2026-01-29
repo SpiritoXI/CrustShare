@@ -106,19 +106,19 @@ export default function FileList({ files }: FileListProps) {
   const getStatusBadge = (status: string, progress?: number) => {
     switch (status) {
       case 'completed':
-        return <Badge className="glass-badge glass-badge-success">已完成</Badge>;
+        return <Badge className="crystal-badge crystal-badge-success">已完成</Badge>;
       case 'error':
-        return <Badge className="glass-badge glass-badge-danger">上传失败</Badge>;
+        return <Badge className="crystal-badge crystal-badge-danger">上传失败</Badge>;
       case 'uploading':
-        return <Badge className="glass-badge glass-badge-warning">上传中 {progress}%</Badge>;
+        return <Badge className="crystal-badge crystal-badge-warning">上传中 {progress}%</Badge>;
       default:
-        return <Badge className="glass-badge">未知</Badge>;
+        return <Badge className="crystal-badge">未知</Badge>;
     }
   };
 
   return (
     <>
-      <div className="rounded-lg overflow-hidden glass-card">
+      <div className="rounded-lg overflow-hidden crystal-card">
       <Table>
         <TableHeader>
           <TableRow className="border-b border-purple-100/30">
@@ -146,7 +146,7 @@ export default function FileList({ files }: FileListProps) {
         </TableHeader>
         <TableBody>
           {files.map((file) => (
-            <TableRow key={file.id} className="glass-table-row border-b border-purple-50/30">
+            <TableRow key={file.id} className="crystal-table-row border-b border-purple-50/30">
               <TableCell>
                 <input
                   type="checkbox"
@@ -157,7 +157,7 @@ export default function FileList({ files }: FileListProps) {
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <FileIcon className="h-4 w-4 text-purple-500/70 glass-icon" />
+                  <FileIcon className="h-4 w-4 text-purple-500/70 crystal-icon" />
                   <span className="font-medium max-w-[150px] truncate cursor-pointer hover:text-purple-500/80 transition-colors"
                     onClick={() => file.cid && setPreviewFile({
                       id: file.id,
@@ -179,13 +179,13 @@ export default function FileList({ files }: FileListProps) {
               <TableCell className="hidden md:table-cell">
                 {file.cid ? (
                   <div className="flex items-center gap-2">
-                    <code className="text-xs glass-badge bg-purple-500/10 px-2 py-1 rounded max-w-[100px] truncate">
+                    <code className="text-xs crystal-badge bg-purple-500/10 px-2 py-1 rounded max-w-[100px] truncate">
                       {file.cid}
                     </code>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 glass-icon"
+                      className="h-6 w-6 crystal-icon"
                       onClick={() => handleCopyCID(file.cid!)}
                     >
                       <Copy className="h-3 w-3" />
@@ -199,11 +199,11 @@ export default function FileList({ files }: FileListProps) {
               <TableCell>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 glass-icon">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 crystal-icon">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="glass-dialog">
+                  <DropdownMenuContent align="end" className="crystal-dialog">
                     <DropdownMenuItem
                       onClick={() => setDownloadFile({ id: file.id, name: file.name, cid: file.cid! })}
                       disabled={!file.cid}

@@ -112,15 +112,15 @@ export default function PermissionManager({
   };
 
   const permissionColors: Record<PermissionType, string> = {
-    [PermissionType.READ]: 'glass-badge glass-badge-primary',
-    [PermissionType.WRITE]: 'glass-badge glass-badge-warning',
-    [PermissionType.DELETE]: 'glass-badge glass-badge-danger',
-    [PermissionType.SHARE]: 'glass-badge glass-badge-success',
+    [PermissionType.READ]: 'crystal-badge crystal-badge-primary',
+    [PermissionType.WRITE]: 'crystal-badge crystal-badge-warning',
+    [PermissionType.DELETE]: 'crystal-badge crystal-badge-danger',
+    [PermissionType.SHARE]: 'crystal-badge crystal-badge-success',
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-dialog sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="crystal-dialog sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-purple-500/70" />
@@ -135,7 +135,7 @@ export default function PermissionManager({
 
         <div className="flex-1 overflow-y-auto space-y-4">
           {/* 公开访问开关 */}
-          <div className="p-4 glass-card rounded-lg">
+          <div className="p-4 crystal-card rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {isPublic ? (
@@ -157,7 +157,7 @@ export default function PermissionManager({
           </div>
 
           {/* 添加用户 */}
-          <div className="p-4 glass-card rounded-lg">
+          <div className="p-4 crystal-card rounded-lg">
             <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
               <UserPlus className="h-4 w-4" />
               添加用户
@@ -167,23 +167,23 @@ export default function PermissionManager({
                 placeholder="用户名"
                 value={newUserName}
                 onChange={(e) => setNewUserName(e.target.value)}
-                className="glass-input flex-1"
+                className="crystal-input flex-1"
               />
               <Input
                 placeholder="邮箱"
                 type="email"
                 value={newUserEmail}
                 onChange={(e) => setNewUserEmail(e.target.value)}
-                className="glass-input flex-1"
+                className="crystal-input flex-1"
               />
-              <Button onClick={handleAddUser} className="glass-button text-white">
+              <Button onClick={handleAddUser} className="crystal-button text-white">
                 添加
               </Button>
             </div>
           </div>
 
           {/* 权限列表 */}
-          <div className="glass-card rounded-lg">
+          <div className="crystal-card rounded-lg">
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-purple-100/30">
@@ -207,7 +207,7 @@ export default function PermissionManager({
                     if (!user) return null;
 
                     return (
-                      <TableRow key={user.id} className="glass-table-row border-b border-purple-50/30">
+                      <TableRow key={user.id} className="crystal-table-row border-b border-purple-50/30">
                         <TableCell>
                           <div>
                             <p className="font-medium">{user.name}</p>
@@ -241,7 +241,7 @@ export default function PermissionManager({
                               variant="ghost"
                               size="icon"
                               onClick={() => handleRemoveUser(user.id)}
-                              className="h-8 w-8 glass-icon text-red-400/80 hover:text-red-500"
+                              className="h-8 w-8 crystal-icon text-red-400/80 hover:text-red-500"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
