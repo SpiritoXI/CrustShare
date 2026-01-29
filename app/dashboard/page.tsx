@@ -11,6 +11,11 @@ import {
   Search,
   Settings,
   LogOut,
+  Moon,
+  Sun,
+  User,
+  Key,
+  Database,
   Grid3X3,
   List,
   Plus,
@@ -33,7 +38,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { useAuthStore, useFileStore, useUIStore, useUploadStore } from "@/lib/store";
+import { useAuthStore, useFileStore, useUIStore, useUploadStore, useGatewayStore } from "@/lib/store";
 import { api, uploadApi, gatewayApi } from "@/lib/api";
 import { CONFIG } from "@/lib/config";
 import { formatFileSize, formatDate, getFileIcon, generateId, copyToClipboard } from "@/lib/utils";
@@ -65,6 +70,17 @@ export default function DashboardPage() {
   const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [selectedFileToMove, setSelectedFileToMove] = useState<FileRecord | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false);
+  const [selectedFileForDownload, setSelectedFileForDownload] = useState<FileRecord | null>(null);
+  const [addGatewayModalOpen, setAddGatewayModalOpen] = useState(false);
+  const [newGatewayName, setNewGatewayName] = useState("");
+  const [newGatewayUrl, setNewGatewayUrl] = useState("");
+  const [newGatewayRegion, setNewGatewayRegion] = useState<"CN" | "INTL">("CN");
+  const { customGateways, addCustomGateway, removeCustomGateway } = useGatewayStore();
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -165,8 +181,25 @@ export default function DashboardPage() {
     }
   };
 
+  const getBestGateway = (): string => {
+    // 优先使用缓存的网关检测结果
+    const cached = gatewayApi.getCachedResults();
+    if (cached && cached.length > 0) {
+      const availableGateways = cached.filter(g => g.available);
+      if (availableGateways.length > 0) {
+        // 按延迟排序，选择最快的
+        const bestGateway = availableGateways.sort((a, b) => (a.latency || Infinity) - (b.latency || Infinity))[0];
+        showToast(`使用最优网关: ${bestGateway.name} (${bestGateway.latency}ms)`, "success");
+        return bestGateway.url;
+      }
+    }
+    // 默认使用 ipfs.io
+    return "https://ipfs.io/ipfs/";
+  };
+
   const handleDownload = (cid: string, filename: string) => {
-    const url = `https://ipfs.io/ipfs/${cid}`;
+    const gatewayUrl = getBestGateway();
+    const url = `${gatewayUrl}${cid}`;
     const link = document.createElement("a");
     link.href = url;
     link.download = filename;
@@ -174,6 +207,18 @@ export default function DashboardPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleDownloadWithGateway = (cid: string, filename: string, gateway: Gateway) => {
+    const url = `${gateway.url}${cid}`;
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`正在通过 ${gateway.name} 下载...`, "success");
   };
 
   const handleCopyCID = async (cid: string, fileId: string | number) => {
@@ -190,16 +235,56 @@ export default function DashboardPage() {
   const handleShare = (file: FileRecord) => {
     setSelectedFileForShare(file);
     setShareUrl(`${window.location.origin}/share/${file.cid}`);
+    setSharePassword("");
+    setShareExpiry("7");
     setShareModalOpen(true);
   };
 
   const handleCopyShareLink = async () => {
+    // 保存分享信息到 localStorage
+    if (selectedFileForShare) {
+      const shareData = {
+        cid: selectedFileForShare.cid,
+        filename: selectedFileForShare.name,
+        size: selectedFileForShare.size,
+        password: sharePassword,
+        expiry: shareExpiry,
+        createdAt: Date.now(),
+      };
+
+      // 获取现有的分享记录
+      const storedShares = localStorage.getItem("crustshare_shares");
+      const shares = storedShares ? JSON.parse(storedShares) : [];
+
+      // 检查是否已存在相同的CID
+      const existingIndex = shares.findIndex((s: any) => s.cid === selectedFileForShare.cid);
+      if (existingIndex >= 0) {
+        shares[existingIndex] = shareData;
+      } else {
+        shares.push(shareData);
+      }
+
+      // 保存到 localStorage
+      localStorage.setItem("crustshare_shares", JSON.stringify(shares));
+    }
+
     const success = await copyToClipboard(shareUrl);
     if (success) {
       showToast("分享链接已复制", "success");
     } else {
       showToast("复制失败", "error");
     }
+  };
+
+  const getAllGateways = () => {
+    // 合并默认网关和自定义网关
+    const allGateways = [...CONFIG.DEFAULT_GATEWAYS];
+    customGateways.forEach(custom => {
+      if (!allGateways.find(g => g.url === custom.url)) {
+        allGateways.push(custom);
+      }
+    });
+    return allGateways;
   };
 
   const handleTestGateways = async () => {
@@ -212,7 +297,8 @@ export default function DashboardPage() {
         setGateways(cached);
         showToast(`已加载缓存的网关状态 (${cached.filter(g => g.available).length}/${cached.length} 可用)`, "success");
       } else {
-        const results = await gatewayApi.testAllGateways(CONFIG.DEFAULT_GATEWAYS);
+        const allGateways = getAllGateways();
+        const results = await gatewayApi.testAllGateways(allGateways);
         setGateways(results);
         gatewayApi.cacheResults(results);
         showToast(`网关检测完成 (${results.filter(g => g.available).length}/${results.length} 可用)`, "success");
@@ -230,7 +316,8 @@ export default function DashboardPage() {
     showToast("正在重新检测网关...", "info");
     
     try {
-      const results = await gatewayApi.testAllGateways(CONFIG.DEFAULT_GATEWAYS);
+      const allGateways = getAllGateways();
+      const results = await gatewayApi.testAllGateways(allGateways);
       setGateways(results);
       gatewayApi.cacheResults(results);
       showToast(`网关检测完成 (${results.filter(g => g.available).length}/${results.length} 可用)`, "success");
@@ -239,6 +326,46 @@ export default function DashboardPage() {
     } finally {
       setIsTestingGateways(false);
     }
+  };
+
+  const handleAddCustomGateway = () => {
+    if (!newGatewayName.trim() || !newGatewayUrl.trim()) {
+      showToast("请输入网关名称和URL", "error");
+      return;
+    }
+
+    // 确保URL以 /ipfs/ 结尾
+    let url = newGatewayUrl.trim();
+    if (!url.endsWith("/")) {
+      url += "/";
+    }
+    if (!url.includes("/ipfs/")) {
+      url += "ipfs/";
+    }
+
+    const newGateway: Gateway = {
+      name: newGatewayName.trim(),
+      url: url,
+      icon: "🌐",
+      priority: 100,
+      region: newGatewayRegion,
+    };
+
+    addCustomGateway(newGateway);
+    setNewGatewayName("");
+    setNewGatewayUrl("");
+    setAddGatewayModalOpen(false);
+    showToast("自定义网关添加成功", "success");
+
+    // 自动重新检测网关
+    handleRefreshGateways();
+  };
+
+  const handleRemoveCustomGateway = (name: string) => {
+    removeCustomGateway(name);
+    showToast("自定义网关已删除", "success");
+    // 从当前显示的网关中移除
+    setGateways(gateways.filter(g => g.name !== name));
   };
 
   const handleCreateFolder = async () => {
@@ -524,7 +651,7 @@ export default function DashboardPage() {
             >
               <Grid3X3 className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={() => setSettingsModalOpen(true)}>
               <Settings className="h-4 w-4" />
             </Button>
           </div>
@@ -626,7 +753,12 @@ export default function DashboardPage() {
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => handleDownload(file.cid, file.name)}
-                            title="下载"
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              setSelectedFileForDownload(file);
+                              setDownloadModalOpen(true);
+                            }}
+                            title="下载 (右键选择网关)"
                           >
                             <Download className="h-4 w-4" />
                           </Button>
@@ -705,7 +837,13 @@ export default function DashboardPage() {
                         e.stopPropagation();
                         handleDownload(file.cid, file.name);
                       }}
-                      title="下载"
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedFileForDownload(file);
+                        setDownloadModalOpen(true);
+                      }}
+                      title="下载 (右键选择网关)"
                     >
                       <Download className="h-3 w-3" />
                     </Button>
@@ -829,9 +967,18 @@ export default function DashboardPage() {
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     可用: {gateways.filter(g => g.available).length} / 总数: {gateways.length}
+                    {customGateways.length > 0 && ` (含 ${customGateways.length} 个自定义)`}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAddGatewayModalOpen(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    添加网关
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -871,12 +1018,12 @@ export default function DashboardPage() {
                           <span className="text-xl">{gateway.icon}</span>
                           <div>
                             <p className="font-medium text-sm">{gateway.name}</p>
-                            <p className="text-xs text-muted-foreground truncate max-w-[300px]">
+                            <p className="text-xs text-muted-foreground truncate max-w-[250px]">
                               {gateway.url}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-2">
                           {gateway.available ? (
                             <>
                               <span className="text-xs text-green-600 font-medium">
@@ -887,14 +1034,50 @@ export default function DashboardPage() {
                           ) : (
                             <span className="text-xs text-red-500">不可用</span>
                           )}
+                          {/* 测试单个网关 */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={async () => {
+                              showToast(`正在测试 ${gateway.name}...`, "info");
+                              const result = await gatewayApi.testGateway(gateway);
+                              setGateways(gateways.map(g => 
+                                g.name === gateway.name 
+                                  ? { ...g, available: result.available, latency: result.latency, lastChecked: Date.now() }
+                                  : g
+                              ));
+                              showToast(
+                                result.available 
+                                  ? `${gateway.name} 可用 (${result.latency}ms)` 
+                                  : `${gateway.name} 不可用`,
+                                result.available ? "success" : "error"
+                              );
+                            }}
+                            title="测试此网关"
+                          >
+                            <RefreshCw className="h-3 w-3" />
+                          </Button>
                           <a
                             href={gateway.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-muted-foreground hover:text-foreground"
+                            className="text-muted-foreground hover:text-foreground p-1"
                           >
                             <ExternalLink className="h-4 w-4" />
                           </a>
+                          {/* 删除自定义网关 */}
+                          {customGateways.find(cg => cg.name === gateway.name) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive"
+                              onClick={() => handleRemoveCustomGateway(gateway.name)}
+                              title="删除自定义网关"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
                         </div>
                       </motion.div>
                     ))}
@@ -1035,6 +1218,350 @@ export default function DashboardPage() {
                 >
                   取消
                 </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {settingsModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setSettingsModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold flex items-center">
+                  <Settings className="h-5 w-5 mr-2" />
+                  设置
+                </h3>
+                <Button variant="ghost" size="icon" onClick={() => setSettingsModalOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Theme Settings */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    {darkMode ? (
+                      <Moon className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <Sun className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    <div>
+                      <p className="font-medium">深色模式</p>
+                      <p className="text-xs text-muted-foreground">切换应用主题</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant={darkMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setDarkMode(!darkMode);
+                      showToast(darkMode ? "已切换到浅色模式" : "已切换到深色模式", "success");
+                    }}
+                  >
+                    {darkMode ? "开启" : "关闭"}
+                  </Button>
+                </div>
+
+                {/* Items Per Page */}
+                <div>
+                  <div className="flex items-center space-x-3 mb-2">
+                    <Database className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">每页显示</p>
+                      <p className="text-xs text-muted-foreground">设置文件列表每页显示数量</p>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    {[10, 20, 50, 100].map((num) => (
+                      <Button
+                        key={num}
+                        variant={itemsPerPage === num ? "default" : "outline"}
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => {
+                          setItemsPerPage(num);
+                          showToast(`每页显示 ${num} 个文件`, "success");
+                        }}
+                      >
+                        {num}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Auto Refresh */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <RefreshCw className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">自动刷新</p>
+                      <p className="text-xs text-muted-foreground">自动检查文件状态</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant={autoRefresh ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setAutoRefresh(!autoRefresh);
+                      showToast(autoRefresh ? "已关闭自动刷新" : "已开启自动刷新", "success");
+                    }}
+                  >
+                    {autoRefresh ? "开启" : "关闭"}
+                  </Button>
+                </div>
+
+                {/* Storage Info */}
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <Database className="h-5 w-5 text-muted-foreground" />
+                    <p className="font-medium">存储统计</p>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">文件总数</span>
+                      <span>{files.length} 个</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">文件夹数</span>
+                      <span>{folders.length} 个</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">总大小</span>
+                      <span>{formatFileSize(files.reduce((sum, f) => sum + f.size, 0))}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* About */}
+                <div className="pt-4 border-t">
+                  <p className="text-xs text-center text-muted-foreground">
+                    CrustShare v{CONFIG.GATEWAY_TEST.CACHE_VERSION}
+                  </p>
+                  <p className="text-xs text-center text-muted-foreground">
+                    基于 Crust Network · IPFS
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Download Gateway Selection Modal */}
+      <AnimatePresence>
+        {downloadModalOpen && selectedFileForDownload && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setDownloadModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center">
+                  <Download className="h-5 w-5 mr-2" />
+                  选择下载网关
+                </h3>
+                <Button variant="ghost" size="icon" onClick={() => setDownloadModalOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <p className="text-sm font-medium truncate">{selectedFileForDownload.name}</p>
+                  <p className="text-xs text-muted-foreground">{formatFileSize(selectedFileForDownload.size)}</p>
+                </div>
+
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  <p className="text-sm font-medium mb-2">可用网关:</p>
+                  {gateways.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-muted-foreground mb-2">尚未检测网关</p>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setDownloadModalOpen(false);
+                          handleTestGateways();
+                        }}
+                      >
+                        <Globe className="h-4 w-4 mr-1" />
+                        检测网关
+                      </Button>
+                    </div>
+                  ) : (
+                    gateways
+                      .filter(g => g.available)
+                      .sort((a, b) => (a.latency || Infinity) - (b.latency || Infinity))
+                      .map((gateway, index) => (
+                        <motion.div
+                          key={gateway.name}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                        >
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-between"
+                            onClick={() => {
+                              handleDownloadWithGateway(
+                                selectedFileForDownload.cid,
+                                selectedFileForDownload.name,
+                                gateway
+                              );
+                              setDownloadModalOpen(false);
+                            }}
+                          >
+                            <div className="flex items-center">
+                              <span className="text-xl mr-2">{gateway.icon}</span>
+                              <div className="text-left">
+                                <p className="font-medium text-sm">{gateway.name}</p>
+                                <p className="text-xs text-muted-foreground">{gateway.region}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              <span className="text-xs text-green-600 font-medium mr-2">
+                                {gateway.latency}ms
+                              </span>
+                              <Download className="h-4 w-4" />
+                            </div>
+                          </Button>
+                        </motion.div>
+                      ))
+                  )}
+                  {gateways.filter(g => g.available).length === 0 && gateways.length > 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      暂无可用网关，请重新检测
+                    </p>
+                  )}
+                </div>
+
+                <div className="pt-2 border-t">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      handleDownload(selectedFileForDownload.cid, selectedFileForDownload.name);
+                      setDownloadModalOpen(false);
+                    }}
+                  >
+                    <Zap className="h-4 w-4 mr-1" />
+                    使用最优网关下载
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Custom Gateway Modal */}
+      <AnimatePresence>
+        {addGatewayModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setAddGatewayModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center">
+                  <Globe className="h-5 w-5 mr-2" />
+                  添加自定义网关
+                </h3>
+                <Button variant="ghost" size="icon" onClick={() => setAddGatewayModalOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">网关名称</label>
+                  <Input
+                    placeholder="例如：我的网关"
+                    value={newGatewayName}
+                    onChange={(e) => setNewGatewayName(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">网关URL</label>
+                  <Input
+                    placeholder="https://gateway.example.com/ipfs/"
+                    value={newGatewayUrl}
+                    onChange={(e) => setNewGatewayUrl(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    支持格式: https://example.com/ipfs/ 或 https://example.com/
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">区域</label>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant={newGatewayRegion === "CN" ? "default" : "outline"}
+                      className="flex-1"
+                      onClick={() => setNewGatewayRegion("CN")}
+                    >
+                      🇨🇳 国内
+                    </Button>
+                    <Button
+                      variant={newGatewayRegion === "INTL" ? "default" : "outline"}
+                      className="flex-1"
+                      onClick={() => setNewGatewayRegion("INTL")}
+                    >
+                      🌍 国际
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex space-x-2 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setAddGatewayModalOpen(false)}
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    className="flex-1 bg-gradient-to-r from-cloudchan-blue to-cloudchan-purple"
+                    onClick={handleAddCustomGateway}
+                    disabled={!newGatewayName.trim() || !newGatewayUrl.trim()}
+                  >
+                    添加并检测
+                  </Button>
+                </div>
               </div>
             </motion.div>
           </motion.div>

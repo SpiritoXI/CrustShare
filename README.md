@@ -79,8 +79,8 @@ CRUST_TOKEN=your-crust-token
 ```
 crustshare/
 ├── app/                 # Next.js 应用
-│   ├── api/            # API 路由
 │   ├── dashboard/      # 文件管理页面
+│   ├── share/          # 分享页面
 │   ├── globals.css     # 全局样式
 │   ├── layout.tsx      # 根布局
 │   ├── page.tsx        # 登录页面
@@ -88,6 +88,8 @@ crustshare/
 ├── components/         # 组件
 │   ├── ui/            # UI 组件
 │   └── toast.tsx      # Toast 通知
+├── functions/          # Cloudflare Functions
+│   └── api/           # API 端点
 ├── lib/               # 工具库
 │   ├── api.ts         # API 服务
 │   ├── config.ts      # 配置
@@ -97,23 +99,10 @@ crustshare/
 └── middleware.ts      # 中间件
 ```
 
-## 功能截图
-
-（待添加）
-
 ## 贡献
-
-欢迎提交 Issue 和 Pull Request！
 
 请参考 [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## 许可证
 
 MIT License
-
-## 致谢
-
-- [Crust Network](https://crust.network/)
-- [IPFS](https://ipfs.tech/)
-- [Upstash](https://upstash.com/)
-- [shadcn/ui](https://ui.shadcn.com/)
