@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, Search, RefreshCw, Plus, LogOut, FileIcon, Tag as TagIcon, Globe, Menu } from 'lucide-react';
+import { Upload, Search, RefreshCw, Plus, LogOut, FileIcon, Tag as TagIcon, Globe, Menu, Settings } from 'lucide-react';
 import useStore from '@/store/useStore';
 import { toast } from 'sonner';
 import FileUpload from './FileUpload';
@@ -15,9 +15,10 @@ import FolderTree from './FolderTree';
 import TagManager from './TagManager';
 import MoveFileDialog from './DialogMove';
 import MobileNav from './MobileNav';
+import TokenConfigDialog, { getTokenFromStorage } from './DialogTokenConfig';
 
-// Vercel 免费层的请求体大小限制（4.5MB）
-const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5MB in bytes
+// 直连上传的文件大小限制（100MB）
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
 
 // 格式化文件大小
 function formatFileSize(bytes: number): string {
@@ -33,6 +34,7 @@ export default function Dashboard() {
   const [showAddCid, setShowAddCid] = useState(false);
   const [showTagManager, setShowTagManager] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [showTokenConfig, setShowTokenConfig] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -142,6 +144,9 @@ export default function Dashboard() {
             </div>
             <div className="flex gap-2">
               <MobileNav />
+              <Button variant="outline" size="icon" onClick={() => setShowTokenConfig(true)} className="crystal-card hidden md:flex" title="配置 Access Token">
+                <Settings className="h-4 w-4" />
+              </Button>
               <Button variant="outline" size="icon" onClick={handleRefresh} className="crystal-card hidden md:flex">
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -354,6 +359,15 @@ export default function Dashboard() {
           onClose={() => setShowMoveDialog(false)}
         />
       )}
+
+      {/* Token 配置对话框 */}
+      <TokenConfigDialog
+        open={showTokenConfig}
+        onOpenChange={setShowTokenConfig}
+        onSave={(token) => {
+          console.log('[Dashboard] Token 已保存:', token.substring(0, 10) + '...');
+        }}
+      />
     </div>
   );
 }

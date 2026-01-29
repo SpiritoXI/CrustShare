@@ -13,15 +13,16 @@ import { Progress } from '@/components/ui/progress';
 import { FileIcon, X, CheckCircle, AlertCircle, Globe, Zap } from 'lucide-react';
 import useStore from '@/store/useStore';
 import { toast } from 'sonner';
-import { getProxy, type UploadProgress } from '@/lib/proxy';
-
-// Vercel 免费层的请求体大小限制（4.5MB）
-const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5MB in bytes
+import { getCrustFilesDirectClient, type DirectUploadProgress } from '@/lib/crustfiles-direct';
+import { getTokenFromStorage } from './DialogTokenConfig';
 
 interface FileUploadProps {
   file: File;
   onClose: () => void;
 }
+
+// 直连上传的文件大小限制（100MB，可根据 CrustFiles.io 限制调整）
+const MAX_FILE_SIZE_DIRECT = 100 * 1024 * 1024; // 100MB in bytes
 
 export default function FileUpload({ file, onClose }: FileUploadProps) {
   const [progress, setProgress] = useState(0);
@@ -47,14 +48,12 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
       return;
     }
 
-    // 检查文件大小
-    if (file.size > MAX_FILE_SIZE) {
-      const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
-      toast.error(
-        `文件 "${file.name}" 超过大小限制（${maxSizeMB}MB），当前大小：${formatFileSize(file.size)}`
-      );
+    // 检查 Access Token
+    const token = getTokenFromStorage();
+    if (!token) {
+      toast.error('请先配置 CrustFiles.io Access Token');
       setStatus('error');
-      setError(`文件超过 ${maxSizeMB}MB 限制`);
+      setError('未配置 Access Token');
       return;
     }
 
@@ -72,11 +71,11 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
     });
 
     try {
-      // 使用代理客户端上传文件
-      const proxy = getProxy();
+      // 使用直连客户端上传文件
+      const client = getCrustFilesDirectClient(token);
 
-      const result = await proxy.upload(file, {
-        onProgress: (progress: UploadProgress) => {
+      const result = await client.upload(file, {
+        onProgress: (progress: DirectUploadProgress) => {
           const percentage = Math.round(progress.percentage);
           setProgress(percentage);
           updateFile(fileId, { progress: percentage });
@@ -108,7 +107,7 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
           url: result.url,
         });
 
-        toast.success(`${file.name} 已通过代理上传到 CrustFiles.io`);
+        toast.success(`${file.name} 已直接上传到 CrustFiles.io`);
       } else {
         throw new Error(result.error || '上传失败');
       }
@@ -119,16 +118,7 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
 
       // 上传失败，从列表中删除该文件
       deleteFile(fileId);
-
-      // 处理 413 错误
-      if (errorMessage.includes('413') || errorMessage.includes('Content Too Large')) {
-        const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
-        toast.error(
-          `文件 "${file.name}" 超过 Vercel 免费层限制（${maxSizeMB}MB），请升级到付费版或使用分片上传`
-        );
-      } else {
-        toast.error(`${file.name} 上传失败：${errorMessage}`);
-      }
+      toast.error(`${file.name} 上传失败：${errorMessage}`);
     }
   };
 

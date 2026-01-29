@@ -17,7 +17,7 @@
 ## ✨ 特性
 
 - 🌐 **去中心化存储** - 基于 Crust Network 和 IPFS 技术
-- ⚡ **正向代理** - 完整的 CrustFiles.io 正向代理，无需跨域请求
+- ⚡ **直连上传** - 直接连接 CrustFiles.io，绕过 Vercel 限制，支持大文件上传
 - 🌉 **多网关下载** - 智能调度多个 IPFS 网关，高可用下载
 - 📁 **文件夹管理** - 支持文件夹层级和嵌套
 - 🏷️ **标签系统** - 灵活的文件标签分类
@@ -29,7 +29,7 @@
 - 🔄 **故障切换** - 网关自动故障切换，保障下载稳定
 - 📊 **状态监控** - 实时监控网关状态和健康度
 - 🔒 **安全认证** - 基于自定义密码的认证系统
-- ⚠️ **文件上传限制** - Vercel 免费层限制单次上传 4.5MB（详见[上传限制说明](./docs/UPLOAD_LIMITS.md)）
+- 📦 **大文件支持** - 支持最大 100MB 文件上传（直连模式）
 
 ---
 
@@ -53,13 +53,24 @@ pnpm install
 
 ### 配置环境变量
 
-使用提供的脚本生成配置：
+#### 方式一：应用内配置（推荐）
 
-```bash
-node scripts/generate-config.js
-```
+直接在应用界面配置：
 
-或手动创建 `.env` 文件：
+1. 启动应用后，点击右上角的设置图标（⚙️）
+2. 点击"配置 Access Token"
+3. 输入您的 CrustFiles.io Access Token
+4. Token 会保存到浏览器的 localStorage 中
+
+**如何获取 Access Token**：
+1. 访问 [CrustFiles.io](https://crustfiles.io/)
+2. 注册或登录您的账户
+3. 在用户设置中找到 API Access Token
+4. 复制 Token 并粘贴到配置对话框中
+
+#### 方式二：环境变量配置（可选）
+
+如果要使用环境变量配置，可以创建 `.env` 文件：
 
 ```bash
 cp .env.example .env
@@ -68,20 +79,15 @@ cp .env.example .env
 然后编辑 `.env` 文件，配置以下变量：
 
 ```env
-# CrustFiles.io 配置（文件上传和下载）
-# 访问 https://crustfiles.io/ 获取 Access Token
-CRUSTFILES_ACCESS_TOKEN=your_crustfiles_access_token_here
-CRUSTFILES_BASE_URL=https://crustfiles.io
-
 # PIN 码配置（用于用户认证）
 # 默认 PIN 码：123456
 PIN_CODE=123456
 
-# CrustFiles.io 配置（文件上传和下载）
+# CrustFiles.io 配置（可选，用于代理模式）
 CRUSTFILES_ACCESS_TOKEN=your_crustfiles_access_token_here
 CRUSTFILES_BASE_URL=https://crustfiles.io
 
-# Upstash Redis 配置（可选，用于会话管理）
+# Upstash Redis 配置（可选，用于生产环境会话管理）
 UPSTASH_REDIS_REST_URL=https://your-redis-url.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your-redis-token
 ```
@@ -90,6 +96,12 @@ UPSTASH_REDIS_REST_TOKEN=your-redis-token
 - 默认 PIN 码：`123456`
 - 建议：使用 4-6 位数字，易于记忆
 - 修改：在环境变量中设置 `PIN_CODE`
+
+**直连上传说明**：
+- 应用使用直连模式上传文件到 CrustFiles.io
+- 支持最大 100MB 文件上传
+- 需要配置 Access Token（在应用界面配置）
+- 不受 Vercel 请求体大小限制
 
 ### 开发
 
