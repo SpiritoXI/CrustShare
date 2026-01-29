@@ -72,6 +72,18 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
         setProgress(100);
         setCid(result.cid!);
 
+        // 创建下载映射
+        try {
+          const mappingResponse = await fetch(`/api/download?fileId=${fileId}&cid=${result.cid}`);
+          if (mappingResponse.ok) {
+            const mappingData = await mappingResponse.json();
+            console.log('[FileUpload] 下载映射已创建:', mappingData.gatewayId);
+          }
+        } catch (error) {
+          console.warn('[FileUpload] 创建下载映射失败:', error);
+          // 不影响上传成功的状态
+        }
+
         // 上传完成
         setStatus('completed');
         updateFile(fileId, {

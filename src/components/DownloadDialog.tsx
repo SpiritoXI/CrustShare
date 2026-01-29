@@ -31,6 +31,8 @@ export default function DownloadDialog({
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadStatus, setDownloadStatus] = useState<'idle' | 'downloading' | 'completed' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string>('');
+  const [gatewayInfo, setGatewayInfo] = useState<{id: string, name: string} | null>(null);
 
   const handleCopyCID = () => {
     navigator.clipboard.writeText(cid);
@@ -42,20 +44,20 @@ export default function DownloadDialog({
     setDownloadStatus('downloading');
     setDownloadProgress(0);
     setError(null);
+    setDownloadUrl('');
 
     try {
-      // 使用代理下载文件
-      const proxy = getProxy();
-
-      // 获取文件 URL
-      const fileUrl = proxy.getFileUrl(cid);
-
-      // 通过代理下载
-      const response = await fetch(fileUrl);
+      // 获取下载 URL（通过网关）
+      const response = await fetch(`/api/download?fileId=${fileId}&cid=${cid}`);
 
       if (!response.ok) {
-        throw new Error('从 CrustFiles.io 代理下载失败');
+        const errorData = await response.json();
+        throw new Error(errorData.message || errorData.error || '获取下载链接失败');
       }
+
+      const data = await response.json();
+      setDownloadUrl(data.downloadUrl);
+      setGatewayInfo({ id: data.gatewayId, name: `网关 ${data.gatewayId}` });
 
       // 模拟下载进度
       for (let i = 0; i <= 100; i += 10) {
@@ -63,20 +65,65 @@ export default function DownloadDialog({
         setDownloadProgress(i);
       }
 
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-
+      // 触发浏览器下载
       const link = document.createElement('a');
-      link.href = blobUrl;
+      link.href = data.downloadUrl;
       link.download = fileName;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
       link.click();
 
-      window.URL.revokeObjectURL(blobUrl);
-
       setDownloadStatus('completed');
-      toast.success('文件通过代理下载成功');
+      toast.success('文件下载成功');
     } catch (err) {
       setError(err instanceof Error ? err.message : '下载失败，请重试');
+      setDownloadStatus('error');
+      toast.error('文件下载失败');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleRetry = async () => {
+    setIsDownloading(true);
+    setDownloadStatus('downloading');
+    setDownloadProgress(0);
+    setError(null);
+
+    try {
+      // 尝试切换到备用网关
+      const response = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileId,
+          cid,
+          fileName,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || errorData.error || '获取下载链接失败');
+      }
+
+      const data = await response.json();
+      setDownloadUrl(data.downloadUrl);
+      setGatewayInfo({ id: data.gatewayId, name: `网关 ${data.gatewayId}` });
+      setError(null);
+
+      // 触发浏览器下载
+      const link = document.createElement('a');
+      link.href = data.downloadUrl;
+      link.download = fileName;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.click();
+
+      setDownloadStatus('completed');
+      toast.success(data.message || '文件下载成功');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '所有网关暂时不可用，请稍后重试');
       setDownloadStatus('error');
       toast.error('文件下载失败');
     } finally {
@@ -176,15 +223,24 @@ export default function DownloadDialog({
                 <Button variant="outline" onClick={onClose} className="crystal-card">
                   关闭
                 </Button>
-                <Button onClick={handleDownload} className="crystal-button text-white">
-                  重试
+                <Button onClick={handleRetry} className="crystal-button text-white">
+                  <Zap className="mr-2 h-4 w-4" />
+                  切换网关重试
                 </Button>
               </>
             )}
             {downloadStatus === 'completed' && (
-              <Button onClick={onClose} className="crystal-button text-white">
-                关闭
-              </Button>
+              <>
+                {gatewayInfo && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mr-2">
+                    <Zap className="h-3 w-3" />
+                    <span>通过 {gatewayInfo.name} 下载</span>
+                  </div>
+                )}
+                <Button onClick={onClose} className="crystal-button text-white">
+                  关闭
+                </Button>
+              </>
             )}
           </div>
         </div>

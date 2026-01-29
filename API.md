@@ -8,6 +8,8 @@
 
 - [认证 API](#认证-api)
 - [代理 API (CrustFiles.io 正向代理)](#代理-api-crustfilesio-正向代理)
+- [下载 API (第三方网关)](#下载-api-第三方网关)
+- [网关状态 API](#网关状态-api)
 - [文件上传 API (Crust Network)](#文件上传-api-crust-network)
 - [存储状态 API](#存储状态-api)
 - [错误处理](#错误处理)
@@ -351,6 +353,244 @@ CRUSTFILES_BASE_URL=https://crustfiles.io
 # （可选）Access Token
 CRUSTFILES_ACCESS_TOKEN=your_access_token
 ```
+
+---
+
+## 下载 API (第三方网关)
+
+通过第三方 IPFS 网关下载文件，与 CrustFiles.io 原生通道完全解耦。
+
+### 获取下载 URL
+
+通过文件 ID 和 CID 获取第三方网关的下载 URL。
+
+**端点**: `GET /api/download?fileId={fileId}&cid={cid}`
+
+**请求参数**:
+- `fileId` (string, 必需): 项目文件 ID
+- `cid` (string, 必需): IPFS CID
+
+**成功响应** (200):
+```json
+{
+  "success": true,
+  "downloadUrl": "https://ipfs.io/ipfs/Qm...",
+  "gatewayId": "ipfs-io",
+  "expiresAt": "2024-01-30T00:00:00.000Z"
+}
+```
+
+**错误响应** (400):
+```json
+{
+  "success": false,
+  "error": "缺少必要参数"
+}
+```
+
+**错误响应** (503):
+```json
+{
+  "success": false,
+  "error": "下载服务暂不可用",
+  "message": "所有网关暂时不可用，请稍后重试",
+  "statistics": {
+    "total": 6,
+    "available": 0,
+    "unavailable": 6
+  }
+}
+```
+
+**示例**:
+
+```bash
+# 获取下载 URL
+curl "http://localhost:5000/api/download?fileId=file-xxx&cid=Qm..."
+```
+
+### 切换网关
+
+切换到备用网关，用于当前网关不可用时的故障切换。
+
+**端点**: `POST /api/download`
+
+**请求头**:
+```http
+Content-Type: application/json
+```
+
+**请求体**:
+```json
+{
+  "fileId": "string",        // 文件 ID
+  "cid": "string",          // IPFS CID
+  "fileName": "string",     // 文件名
+  "gatewayId": "string"     // 可选，指定使用哪个网关
+}
+```
+
+**成功响应** (200):
+```json
+{
+  "success": true,
+  "downloadUrl": "https://dweb.link/ipfs/Qm...",
+  "gatewayId": "dweb-link",
+  "message": "已切换到备用网关"
+}
+```
+
+**错误响应** (400):
+```json
+{
+  "success": false,
+  "error": "缺少必要参数"
+}
+```
+
+**错误响应** (503):
+```json
+{
+  "success": false,
+  "error": "下载服务暂不可用",
+  "message": "所有网关暂时不可用，请稍后重试"
+}
+```
+
+**示例**:
+
+```bash
+# 切换网关
+curl -X POST http://localhost:5000/api/download \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fileId": "file-xxx",
+    "cid": "Qm...",
+    "fileName": "example.pdf"
+  }'
+
+# 切换到指定网关
+curl -X POST http://localhost:5000/api/download \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fileId": "file-xxx",
+    "cid": "Qm...",
+    "gatewayId": "ipfs-io"
+  }'
+```
+
+### 清理下载映射
+
+删除文件的下载映射，释放资源。
+
+**端点**: `DELETE /api/download?fileId={fileId}`
+
+**请求参数**:
+- `fileId` (string, 必需): 项目文件 ID
+
+**成功响应** (200):
+```json
+{
+  "success": true,
+  "message": "下载映射已清理"
+}
+```
+
+**错误响应** (400):
+```json
+{
+  "success": false,
+  "error": "缺少 file ID"
+}
+```
+
+**示例**:
+
+```bash
+# 清理下载映射
+curl -X DELETE "http://localhost:5000/api/download?fileId=file-xxx"
+```
+
+---
+
+## 网关状态 API
+
+获取所有网关的状态和统计信息，用于监控和调试。
+
+### 获取网关状态
+
+获取所有网关的详细状态信息。
+
+**端点**: `GET /api/gateway/status`
+
+**成功响应** (200):
+```json
+{
+  "success": true,
+  "statistics": {
+    "total": 6,
+    "enabled": 6,
+    "available": 5,
+    "unavailable": 0,
+    "degraded": 1,
+    "maintenance": 0,
+    "averageResponseTime": 234,
+    "averageSuccessRate": 98.5
+  },
+  "gateways": [
+    {
+      "id": "ipfs-io",
+      "name": "IPFS.io Gateway",
+      "type": "ipfs",
+      "url": "https://ipfs.io",
+      "priority": 1,
+      "enabled": true,
+      "authRequired": false,
+      "timeout": 5000,
+      "maxRetries": 3,
+      "state": {
+        "status": "available",
+        "responseTime": 120,
+        "successRate": 100,
+        "lastCheckTime": "2024-01-29T12:00:00.000Z",
+        "lastError": null
+      }
+    }
+  ],
+  "timestamp": "2024-01-29T12:00:00.000Z"
+}
+```
+
+**示例**:
+
+```bash
+# 获取网关状态
+curl http://localhost:5000/api/gateway/status
+```
+
+### 网关状态说明
+
+#### 状态值
+
+| 状态 | 说明 |
+|-----|------|
+| `available` | 可用，正常工作 |
+| `unavailable` | 不可用，无法访问 |
+| `degraded` | 降级，响应时间过长 |
+| `maintenance` | 维护中，暂时不可用 |
+
+#### 网关统计
+
+| 字段 | 说明 |
+|-----|------|
+| `total` | 总网关数 |
+| `enabled` | 启用的网关数 |
+| `available` | 可用的网关数 |
+| `unavailable` | 不可用的网关数 |
+| `degraded` | 降级的网关数 |
+| `maintenance` | 维护中的网关数 |
+| `averageResponseTime` | 平均响应时间（毫秒） |
+| `averageSuccessRate` | 平均成功率（0-100） |
 
 ---
 

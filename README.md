@@ -18,6 +18,7 @@
 
 - 🌐 **去中心化存储** - 基于 Crust Network 和 IPFS 技术
 - ⚡ **正向代理** - 完整的 CrustFiles.io 正向代理，无需跨域请求
+- 🌉 **多网关下载** - 智能调度多个 IPFS 网关，高可用下载
 - 🔒 **权限管理** - 细粒度的用户权限控制
 - 📁 **文件夹管理** - 支持文件夹层级和嵌套
 - 🏷️ **标签系统** - 灵活的文件标签分类
@@ -26,6 +27,8 @@
 - 👁️ **文件预览** - 支持图片、视频、音频等格式预览
 - 🎨 **优雅 UI** - 淡雅水晶风格，提供良好的用户体验
 - 💾 **本地缓存** - 智能缓存机制，提升性能
+- 🔄 **故障切换** - 网关自动故障切换，保障下载稳定
+- 📊 **状态监控** - 实时监控网关状态和健康度
 
 ---
 
@@ -184,6 +187,89 @@ const response = await fetch('/api/auth/login', {
 - **JWT 支持**：可选的 JWT 令牌验证
 
 #### 2. CrustFiles.io 代理（正向代理）
+
+完整的 CrustFiles.io 正向代理功能，无需直接跨域请求：
+
+```typescript
+import { getProxy } from '@/lib/proxy';
+
+// 创建代理实例
+const proxy = getProxy('your-auth-token');
+
+// 上传文件
+const result = await proxy.upload(file, {
+  onProgress: (progress) => {
+    console.log(`${progress.percentage}%`);
+  }
+});
+
+// 下载文件
+const blob = await proxy.downloadFile(cid, 'filename.pdf');
+
+// 获取文件信息
+const info = await proxy.getFileInfo(cid);
+
+// 自定义 API 调用
+const response = await proxy.get('/api/v0/version');
+```
+
+**核心特性**：
+- ✅ 完整透传所有 HTTP 方法（GET、POST、PUT、DELETE、PATCH）
+- ✅ 完整透传请求头和请求体（包括文件流）
+- ✅ 完整透传响应（状态码、响应头、响应体）
+- ✅ 保持鉴权状态（Cookie、Session、Token）
+- ✅ 支持实时上传进度
+- ✅ 支持单文件和多文件上传
+- ✅ 完全兼容 CrustFiles.io 原生 API
+
+详细文档：[代理功能文档](./PROXY.md)
+
+#### 3. 第三方网关下载（与上传链路解耦）
+
+通过多个第三方 IPFS 网关智能调度下载，与 CrustFiles.io 原生通道完全解耦：
+
+```typescript
+// 获取下载 URL（自动选择最优网关）
+const response = await fetch(`/api/download?fileId=${fileId}&cid=${cid}`);
+const data = await response.json();
+// data.downloadUrl: https://ipfs.io/ipfs/Qm...
+// data.gatewayId: ipfs-io
+
+// 触发下载
+const link = document.createElement('a');
+link.href = data.downloadUrl;
+link.download = fileName;
+link.click();
+
+// 切换网关（故障切换）
+const retryResponse = await fetch('/api/download', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ fileId, cid }),
+});
+const retryData = await retryResponse.json();
+// 自动选择备用网关
+```
+
+**核心特性**：
+- ✅ 多网关智能调度（自动选择最优网关）
+- ✅ 实时健康检测（20 秒检测一次）
+- ✅ 自动故障切换（网关不可用时自动切换）
+- ✅ 网关状态监控（响应时间、成功率）
+- ✅ 状态缓存机制（减少检测频次）
+- ✅ 完整日志记录（上传、下载、网关检测）
+
+**默认网关列表**：
+1. IPFS.io Gateway (https://ipfs.io) - 优先级 1
+2. dweb.link Gateway (https://dweb.link) - 优先级 2
+3. Cloudflare IPFS Gateway (https://cloudflare-ipfs.com) - 优先级 3
+4. JBO ETH Limo Gateway (https://jbo-eth.limo) - 优先级 4
+5. NFTStorage Gateway (https://nftstorage.link) - 优先级 5
+6. CrustFiles.io Gateway (https://crustfiles.io) - 优先级 10（备用）
+
+详细文档：[网关功能文档](./GATEWAY.md)
+
+#### 4. 文件上传
 
 完整的 CrustFiles.io 正向代理功能，无需直接跨域请求：
 
