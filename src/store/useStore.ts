@@ -1,4 +1,35 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { cache, CacheKeys, CacheTTL } from '@/lib/cache';
+
+export enum PermissionType {
+  READ = 'read',
+  WRITE = 'write',
+  DELETE = 'delete',
+  SHARE = 'share',
+}
+
+export interface Permission {
+  userId: string;
+  permissions: PermissionType[];
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  isOwner?: boolean;
+}
+
+export interface FileVersion {
+  id: string;
+  version: number;
+  size: number;
+  uploadDate: string;
+  cid: string;
+  comment?: string;
+}
 
 export interface Tag {
   id: string;
@@ -24,6 +55,10 @@ export interface FileItem {
   progress?: number;
   folderId?: string | null;
   tags?: string[];
+  versions?: FileVersion[];
+  currentVersion?: number;
+  permissions?: Permission[];
+  isPublic?: boolean;
 }
 
 interface StoreState {
@@ -59,9 +94,28 @@ interface StoreState {
   addTagToFile: (fileId: string, tagId: string) => void;
   removeTagFromFile: (fileId: string, tagId: string) => void;
   getTagsByFile: (fileId: string) => Tag[];
+  // 版本管理相关
+  addVersion: (fileId: string, version: FileVersion) => void;
+  restoreVersion: (fileId: string, version: number) => void;
+  deleteVersion: (fileId: string, version: number) => void;
+  getVersions: (fileId: string) => FileVersion[];
+  // 用户和权限管理
+  users: User[];
+  currentUser: User;
+  addUser: (user: User) => void;
+  updateUser: (id: string, updates: Partial<User>) => void;
+  deleteUser: (id: string) => void;
+  addFilePermission: (fileId: string, permission: Permission) => void;
+  removeFilePermission: (fileId: string, userId: string) => void;
+  updateFilePermission: (fileId: string, userId: string, permissions: PermissionType[]) => void;
+  getFilePermissions: (fileId: string) => Permission[];
+  togglePublic: (fileId: string) => void;
+  checkPermission: (fileId: string, permission: PermissionType) => boolean;
 }
 
-const useStore = create<StoreState>((set, get) => ({
+const useStore = create<StoreState>()(
+  persist(
+    (set, get) => ({
   isAuthenticated: false,
   password: '',
   files: [],
@@ -70,6 +124,20 @@ const useStore = create<StoreState>((set, get) => ({
   currentFolderId: null,
   searchTerm: '',
   selectedFiles: [],
+  users: [
+    {
+      id: 'owner',
+      name: 'Owner',
+      email: 'owner@crustshare.com',
+      isOwner: true,
+    },
+  ],
+  currentUser: {
+    id: 'owner',
+    name: 'Owner',
+    email: 'owner@crustshare.com',
+    isOwner: true,
+  },
   setIsAuthenticated: (value) => set({ isAuthenticated: value }),
   setPassword: (value) => set({ password: value }),
   addFile: (file) => set((state) => ({ files: [...state.files, file] })),
@@ -163,6 +231,170 @@ const useStore = create<StoreState>((set, get) => ({
     if (!file || !file.tags) return [];
     return state.tags.filter((tag) => file.tags?.includes(tag.id));
   },
-}));
+  // 版本管理相关
+  addVersion: (fileId, version) =>
+    set((state) => ({
+      files: state.files.map((file) =>
+        file.id === fileId
+          ? {
+              ...file,
+              versions: [...(file.versions || []), version],
+              currentVersion: version.version,
+              size: version.size,
+              cid: version.cid,
+            }
+          : file
+      ),
+    })),
+  restoreVersion: (fileId, version) =>
+    set((state) => {
+      const file = state.files.find((f) => f.id === fileId);
+      if (!file || !file.versions) return state;
+
+      const targetVersion = file.versions.find((v) => v.version === version);
+      if (!targetVersion) return state;
+
+      return {
+        ...state,
+        files: state.files.map((f) =>
+          f.id === fileId
+            ? {
+                ...f,
+                currentVersion: version,
+                size: targetVersion.size,
+                cid: targetVersion.cid,
+              }
+            : f
+        ),
+      };
+    }),
+  deleteVersion: (fileId, version) =>
+    set((state) => {
+      const file = state.files.find((f) => f.id === fileId);
+      if (!file || !file.versions) return state;
+
+      const newVersions = file.versions.filter((v) => v.version !== version);
+      const newCurrentVersion =
+        file.currentVersion === version
+          ? newVersions.length > 0
+            ? Math.max(...newVersions.map((v) => v.version))
+            : 1
+          : file.currentVersion;
+
+      return {
+        ...state,
+        files: state.files.map((f) =>
+          f.id === fileId
+            ? {
+                ...f,
+                versions: newVersions,
+                currentVersion: newCurrentVersion,
+              }
+            : f
+        ),
+      };
+    }),
+  getVersions: (fileId) => {
+    const state = get();
+    const file = state.files.find((f) => f.id === fileId);
+    return file?.versions || [];
+  },
+  // 用户和权限管理
+  addUser: (user) =>
+    set((state) => ({ users: [...state.users, user] })),
+  updateUser: (id, updates) =>
+    set((state) => ({
+      users: state.users.map((user) =>
+        user.id === id ? { ...user, ...updates } : user
+      ),
+    })),
+  deleteUser: (id) =>
+    set((state) => ({
+      users: state.users.filter((user) => user.id !== id),
+      files: state.files.map((file) => ({
+        ...file,
+        permissions: file.permissions?.filter((p) => p.userId !== id),
+      })),
+    })),
+  addFilePermission: (fileId, permission) =>
+    set((state) => ({
+      files: state.files.map((file) =>
+        file.id === fileId
+          ? {
+              ...file,
+              permissions: [
+                ...(file.permissions || []).filter(
+                  (p) => p.userId !== permission.userId
+                ),
+                permission,
+              ],
+            }
+          : file
+      ),
+    })),
+  removeFilePermission: (fileId, userId) =>
+    set((state) => ({
+      files: state.files.map((file) =>
+        file.id === fileId
+          ? {
+              ...file,
+              permissions: file.permissions?.filter((p) => p.userId !== userId),
+            }
+          : file
+      ),
+    })),
+  updateFilePermission: (fileId, userId, permissions) =>
+    set((state) => ({
+      files: state.files.map((file) =>
+        file.id === fileId
+          ? {
+              ...file,
+              permissions: file.permissions?.map((p) =>
+                p.userId === userId ? { ...p, permissions } : p
+              ),
+            }
+          : file
+      ),
+    })),
+  getFilePermissions: (fileId) => {
+    const state = get();
+    const file = state.files.find((f) => f.id === fileId);
+    return file?.permissions || [];
+  },
+  togglePublic: (fileId) =>
+    set((state) => ({
+      files: state.files.map((file) =>
+        file.id === fileId ? { ...file, isPublic: !file.isPublic } : file
+      ),
+    })),
+  checkPermission: (fileId, permission) => {
+    const state = get();
+    const file = state.files.find((f) => f.id === fileId);
+    if (!file) return false;
+
+    // 所有者拥有所有权限
+    if (state.currentUser.isOwner) return true;
+
+    // 公开文件可读
+    if (permission === PermissionType.READ && file.isPublic) return true;
+
+    // 检查用户权限
+    const userPermission = file.permissions?.find(
+      (p) => p.userId === state.currentUser.id
+    );
+    return userPermission?.permissions.includes(permission) || false;
+  }
+}), {
+  name: 'crustshare-storage',
+    storage: createJSONStorage(() => localStorage),
+    partialize: (state) => ({
+      files: state.files,
+      folders: state.folders,
+      tags: state.tags,
+      users: state.users,
+      currentUser: state.currentUser,
+    }),
+  },
+));
 
 export default useStore;

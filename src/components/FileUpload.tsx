@@ -40,7 +40,7 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
 
       const fileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-      // 添加文件到列表
+      // 添加文件到列表（上传中状态）
       addFile({
         id: fileId,
         name: file.name,
@@ -51,26 +51,47 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
         progress: 0,
       });
 
-      // 模拟上传过程
       try {
-        for (let i = 0; i <= 100; i += 5) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          const newProgress = i;
-          setProgress(newProgress);
-          updateFile(fileId, { progress: newProgress });
+        // 创建 FormData
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // 模拟进度更新
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+          if (progress < 90) {
+            progress += Math.random() * 10;
+            updateFile(fileId, { progress: Math.min(progress, 90) });
+          }
+        }, 200);
+
+        // 调用上传 API
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        clearInterval(progressInterval);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || '上传失败');
         }
+
+        const data = await response.json();
 
         // 上传完成
         setStatus('completed');
         updateFile(fileId, {
           status: 'completed',
           progress: 100,
-          cid: `Qm${Math.random().toString(36).substr(2, 44)}`, // 模拟 CID
+          cid: data.fileKey, // 使用 fileKey 作为 CID
         });
+
         toast.success(`${file.name} 上传成功`);
       } catch (err) {
         setStatus('error');
-        setError('上传失败，请重试');
+        setError(err instanceof Error ? err.message : '上传失败，请重试');
         updateFile(fileId, {
           status: 'error',
         });
@@ -94,7 +115,7 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
       <DialogContent className="crystal-dialog sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-purple-500/80 to-pink-500/80 bg-clip-text text-transparent">
               文件上传
             </span>
             <Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6">
@@ -112,8 +133,8 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
           {/* 文件信息 */}
           <div className="flex items-start space-x-4 p-4 crystal-card rounded-lg">
             <div className="flex-shrink-0">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                <FileIcon className="h-6 w-6 text-purple-600" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-400/20 to-pink-400/20">
+                <FileIcon className="h-6 w-6 text-purple-500/80" />
               </div>
             </div>
             <div className="flex-1 min-w-0">
@@ -123,10 +144,10 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
               </p>
             </div>
             {status === 'completed' && (
-              <CheckCircle className="h-6 w-6 text-green-500 flex-shrink-0" />
+              <CheckCircle className="h-6 w-6 text-green-500/70 flex-shrink-0" />
             )}
             {status === 'error' && (
-              <AlertCircle className="h-6 w-6 text-red-500 flex-shrink-0" />
+              <AlertCircle className="h-6 w-6 text-red-400/70 flex-shrink-0" />
             )}
           </div>
 
@@ -134,7 +155,7 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">上传进度</span>
-              <span className="font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <span className="font-medium bg-gradient-to-r from-purple-500/80 to-pink-500/80 bg-clip-text text-transparent">
                 {progress}%
               </span>
             </div>

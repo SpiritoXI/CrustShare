@@ -17,12 +17,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { FileIcon, MoreVertical, CheckCircle, AlertCircle, Clock, Copy, Edit2, Trash2, Share2, Download } from 'lucide-react';
+import { FileIcon, MoreVertical, CheckCircle, AlertCircle, Clock, Copy, Edit2, Trash2, Share2, Download, History, Shield } from 'lucide-react';
 import useStore from '@/store/useStore';
 import { toast } from 'sonner';
 import RenameDialog from './RenameDialog';
 import ShareDialog from './ShareDialog';
 import DownloadDialog from './DownloadDialog';
+import VersionHistory from './VersionHistory';
+import PermissionManager from './PermissionManager';
 
 interface FileListProps {
   files: Array<{
@@ -41,6 +43,8 @@ export default function FileList({ files }: FileListProps) {
   const [renameFileId, setRenameFileId] = useState<string | null>(null);
   const [shareFileId, setShareFileId] = useState<string | null>(null);
   const [downloadFile, setDownloadFile] = useState<{ id: string; name: string; cid: string } | null>(null);
+  const [versionFile, setVersionFile] = useState<{ id: string; name: string } | null>(null);
+  const [permissionFile, setPermissionFile] = useState<{ id: string; name: string } | null>(null);
 
   const deleteFile = useStore((state) => state.deleteFile);
   const updateFile = useStore((state) => state.updateFile);
@@ -80,11 +84,11 @@ export default function FileList({ files }: FileListProps) {
   const getStatusIcon = (status: string, progress?: number) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-green-500/70" />;
       case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
+        return <AlertCircle className="h-4 w-4 text-red-400/70" />;
       case 'uploading':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
+        return <Clock className="h-4 w-4 text-yellow-500/70" />;
       default:
         return null;
     }
@@ -108,7 +112,7 @@ export default function FileList({ files }: FileListProps) {
       <div className="rounded-lg overflow-hidden crystal-card">
       <Table>
         <TableHeader>
-          <TableRow className="border-b border-purple-200/30">
+          <TableRow className="border-b border-purple-100/30">
             <TableHead className="w-[50px]">
               <input
                 type="checkbox"
@@ -133,7 +137,7 @@ export default function FileList({ files }: FileListProps) {
         </TableHeader>
         <TableBody>
           {files.map((file) => (
-            <TableRow key={file.id} className="crystal-table-row border-b border-purple-100/30">
+            <TableRow key={file.id} className="crystal-table-row border-b border-purple-50/30">
               <TableCell>
                 <input
                   type="checkbox"
@@ -143,7 +147,7 @@ export default function FileList({ files }: FileListProps) {
                 />
               </TableCell>
               <TableCell>
-                <FileIcon className="h-4 w-4 text-purple-600 crystal-icon inline mr-2" />
+                <FileIcon className="h-4 w-4 text-purple-500/70 crystal-icon inline mr-2" />
                 <span className="font-medium max-w-[150px] inline align-middle truncate">
                   {file.name}
                 </span>
@@ -202,6 +206,20 @@ export default function FileList({ files }: FileListProps) {
                       分享文件
                     </DropdownMenuItem>
                     <DropdownMenuItem
+                      onClick={() => setVersionFile({ id: file.id, name: file.name })}
+                      disabled={!file.cid}
+                    >
+                      <History className="mr-2 h-4 w-4" />
+                      版本历史
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setPermissionFile({ id: file.id, name: file.name })}
+                      disabled={!file.cid}
+                    >
+                      <Shield className="mr-2 h-4 w-4" />
+                      权限管理
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
                       onClick={() => setRenameFileId(file.id)}
                     >
                       <Edit2 className="mr-2 h-4 w-4" />
@@ -209,7 +227,7 @@ export default function FileList({ files }: FileListProps) {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleDelete(file.id)}
-                      className="text-red-600"
+                      className="text-red-500/80"
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
                       删除
@@ -243,6 +261,24 @@ export default function FileList({ files }: FileListProps) {
         fileName={downloadFile.name}
         cid={downloadFile.cid}
         onClose={() => setDownloadFile(null)}
+      />
+    )}
+
+    {versionFile && (
+      <VersionHistory
+        fileId={versionFile.id}
+        fileName={versionFile.name}
+        open={!!versionFile}
+        onOpenChange={(open) => !open && setVersionFile(null)}
+      />
+    )}
+
+    {permissionFile && (
+      <PermissionManager
+        fileId={permissionFile.id}
+        fileName={permissionFile.name}
+        open={!!permissionFile}
+        onOpenChange={(open) => !open && setPermissionFile(null)}
       />
     )}
   </>

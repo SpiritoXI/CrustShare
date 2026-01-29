@@ -89,15 +89,18 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen">
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50" />
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIgZmlsbD0icmdiYSg5OSwgMTAyLCAyNDEsIDAuMSkiLz48L3N2Zz4=')] opacity-30" />
+      {/* 淡雅背景装饰 */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/30" />
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIgZmlsbD0icmdiYSg5OSwgMTAyLCAyNDEsIDAuMDUpIi8+PC9zdmc+')] opacity-20" />
+      <div className="absolute -top-60 -right-60 w-96 h-96 bg-purple-100/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-60 -left-60 w-96 h-96 bg-pink-100/30 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative container mx-auto px-4 py-8">
         {/* 头部 */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-3xl font-bold tracking-tight text-transparent">
+              <h1 className="bg-gradient-to-r from-purple-500/80 via-pink-500/70 to-blue-500/80 bg-clip-text text-3xl font-bold tracking-tight text-transparent">
                 CrustShare
               </h1>
               <p className="text-muted-foreground mt-1">安全的分布式文件存储平台</p>
@@ -152,7 +155,7 @@ export default function Dashboard() {
           <div className="md:col-span-3 space-y-4">
             {/* 批量操作工具栏 */}
             {selectedFiles.length > 0 && (
-              <Card className="crystal-card border-purple-400 border-2">
+              <Card className="crystal-card border-purple-200/60 border-2">
                 <CardContent className="py-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -188,7 +191,7 @@ export default function Dashboard() {
                         variant="outline"
                         size="sm"
                         onClick={handleBatchDelete}
-                        className="crystal-card text-red-600 hover:text-red-700"
+                        className="crystal-card text-red-500 hover:text-red-600"
                       >
                         批量删除
                       </Button>

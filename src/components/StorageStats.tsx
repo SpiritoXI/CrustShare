@@ -25,22 +25,22 @@ export default function StorageStats() {
       title: '总文件数',
       value: totalFiles,
       icon: FileIcon,
-      gradient: 'from-blue-500 to-blue-600',
-      textColor: 'text-blue-600',
+      gradient: 'from-blue-400/80 to-blue-500/80',
+      textColor: 'text-blue-500/80',
     },
     {
       title: '已完成',
       value: completedFiles,
       icon: HardDrive,
-      gradient: 'from-green-500 to-green-600',
-      textColor: 'text-green-600',
+      gradient: 'from-green-400/80 to-green-500/80',
+      textColor: 'text-green-500/80',
     },
     {
       title: '总存储空间',
       value: formatFileSize(totalSize),
       icon: Folder,
-      gradient: 'from-purple-500 to-pink-600',
-      textColor: 'text-purple-600',
+      gradient: 'from-purple-400/80 to-pink-400/80',
+      textColor: 'text-purple-500/80',
     },
   ];
 

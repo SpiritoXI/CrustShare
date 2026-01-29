@@ -10,8 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { X, Download, CheckCircle, AlertCircle, RefreshCw, Globe } from 'lucide-react';
-import { getBestGateway, getDownloadUrl, Gateway } from '@/lib/gateway';
+import { X, Download, CheckCircle, AlertCircle, RefreshCw, CloudDownload } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DownloadDialogProps {
@@ -27,57 +26,49 @@ export default function DownloadDialog({
   cid,
   onClose,
 }: DownloadDialogProps) {
-  const [gateway, setGateway] = useState<Gateway | null>(null);
-  const [isChecking, setIsChecking] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadStatus, setDownloadStatus] = useState<'idle' | 'downloading' | 'completed' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    checkGateway();
-  }, []);
-
-  const checkGateway = async () => {
-    setIsChecking(true);
-    try {
-      const bestGateway = await getBestGateway();
-      if (bestGateway) {
-        setGateway(bestGateway);
-        toast.success(`已选择最佳网关：${bestGateway.name}`);
-      } else {
-        setError('无法检测到可用的网关');
-        setDownloadStatus('error');
-      }
-    } catch (err) {
-      setError('网关检测失败');
-      setDownloadStatus('error');
-    } finally {
-      setIsChecking(false);
-    }
-  };
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
   const handleDownload = async () => {
-    if (!gateway) return;
-
     setIsDownloading(true);
     setDownloadStatus('downloading');
     setDownloadProgress(0);
+    setError(null);
 
     try {
-      const url = getDownloadUrl(cid, gateway);
+      // 调用下载 API 生成签名 URL
+      const response = await fetch('/api/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileKey: cid, // 使用 cid 作为 fileKey
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '生成下载链接失败');
+      }
+
+      const data = await response.json();
+      setDownloadUrl(data.downloadUrl);
 
       // 模拟下载进度
       for (let i = 0; i <= 100; i += 10) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         setDownloadProgress(i);
       }
 
-      // 实际下载
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('下载失败');
+      // 使用 fetch + blob 模式下载
+      const fileResponse = await fetch(data.downloadUrl);
+      if (!fileResponse.ok) throw new Error('下载失败');
 
-      const blob = await response.blob();
+      const blob = await fileResponse.blob();
       const blobUrl = window.URL.createObjectURL(blob);
 
       const link = document.createElement('a');
@@ -90,7 +81,7 @@ export default function DownloadDialog({
       setDownloadStatus('completed');
       toast.success('文件下载成功');
     } catch (err) {
-      setError('下载失败，请重试');
+      setError(err instanceof Error ? err.message : '下载失败，请重试');
       setDownloadStatus('error');
       toast.error('文件下载失败');
     } finally {
@@ -98,17 +89,12 @@ export default function DownloadDialog({
     }
   };
 
-  const formatResponseTime = (ms?: number): string => {
-    if (!ms) return '-';
-    return `${ms.toFixed(0)}ms`;
-  };
-
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="crystal-dialog sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-purple-500/80 to-pink-500/80 bg-clip-text text-transparent">
               下载文件
             </span>
             <Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6">
@@ -116,7 +102,7 @@ export default function DownloadDialog({
             </Button>
           </DialogTitle>
           <DialogDescription>
-            从 IPFS 网关下载文件
+            从对象存储下载文件
           </DialogDescription>
         </DialogHeader>
 
@@ -124,7 +110,7 @@ export default function DownloadDialog({
           {/* 文件信息 */}
           <div className="p-4 crystal-card rounded-lg space-y-2">
             <div className="flex items-center gap-2 text-sm">
-              <Globe className="h-4 w-4 text-purple-600" />
+              <CloudDownload className="h-4 w-4 text-purple-500/70" />
               <span className="font-medium">文件信息</span>
             </div>
             <div className="space-y-1 text-sm">
@@ -133,46 +119,10 @@ export default function DownloadDialog({
                 <span className="ml-1 font-medium">{fileName}</span>
               </div>
               <div>
-                <span className="text-muted-foreground">CID：</span>
-                <span className="ml-1 font-mono text-xs">{cid}</span>
+                <span className="text-muted-foreground">文件 Key：</span>
+                <span className="ml-1 font-mono text-xs break-all">{cid}</span>
               </div>
             </div>
-          </div>
-
-          {/* 网关信息 */}
-          <div className="p-4 crystal-card rounded-lg space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm">
-                <Globe className="h-4 w-4 text-purple-600" />
-                <span className="font-medium">网关信息</span>
-              </div>
-              {isChecking && (
-                <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
-              )}
-            </div>
-
-            {gateway ? (
-              <div className="space-y-1 text-sm">
-                <div>
-                  <span className="text-muted-foreground">网关：</span>
-                  <span className="ml-1 font-medium">{gateway.name}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">响应时间：</span>
-                  <span className="ml-1 font-medium text-green-600">
-                    {formatResponseTime(gateway.responseTime)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">状态：</span>
-                  <span className="ml-1 font-medium text-green-600">可用</span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {isChecking ? '正在检测最佳网关...' : '未检测到可用网关'}
-              </p>
-            )}
           </div>
 
           {/* 下载进度 */}
@@ -191,41 +141,38 @@ export default function DownloadDialog({
           {/* 下载状态 */}
           {downloadStatus === 'completed' && (
             <div className="flex items-center justify-center gap-2 p-4 crystal-card rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-green-500/70" />
               <span className="text-sm font-medium">下载完成</span>
             </div>
           )}
 
           {downloadStatus === 'error' && (
             <div className="flex items-center justify-center gap-2 p-4 crystal-card rounded-lg">
-              <AlertCircle className="h-5 w-5 text-red-500" />
-              <span className="text-sm font-medium text-red-600">{error || '下载失败'}</span>
+              <AlertCircle className="h-5 w-5 text-red-400/70" />
+              <span className="text-sm text-red-500/80">{error}</span>
             </div>
           )}
 
           {/* 操作按钮 */}
           <div className="flex justify-end gap-2">
-            {downloadStatus === 'idle' || downloadStatus === 'error' ? (
+            {downloadStatus === 'idle' && (
+              <Button onClick={handleDownload} className="crystal-button text-white">
+                <Download className="mr-2 h-4 w-4" />
+                开始下载
+              </Button>
+            )}
+            {downloadStatus === 'error' && (
               <>
-                <Button
-                  variant="outline"
-                  onClick={checkGateway}
-                  disabled={isChecking}
-                  className="crystal-card"
-                >
-                  <RefreshCw className={`mr-2 h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
-                  重新检测
+                <Button variant="outline" onClick={onClose} className="crystal-card">
+                  关闭
                 </Button>
-                <Button
-                  onClick={handleDownload}
-                  disabled={!gateway || isChecking || isDownloading}
-                  className="crystal-button text-white"
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  下载
+                <Button onClick={handleDownload} className="crystal-button text-white">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  重试
                 </Button>
               </>
-            ) : (
+            )}
+            {downloadStatus === 'completed' && (
               <Button onClick={onClose} className="crystal-button text-white">
                 关闭
               </Button>
