@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, Search, RefreshCw, Plus, LogOut, FileIcon, Tag as TagIcon, Globe, Menu } from 'lucide-react';
-import useStore from '@/store/useStore');
+import useStore from '@/store/useStore';
 import { toast } from 'sonner';
 import FileUpload from './FileUpload';
 import FileList from './FileList';
