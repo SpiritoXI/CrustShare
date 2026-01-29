@@ -4,16 +4,18 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, Search, RefreshCw, Plus, LogOut, FileIcon, Tag as TagIcon } from 'lucide-react';
+import { Upload, Search, RefreshCw, Plus, LogOut, FileIcon, Tag as TagIcon, Globe, HardDrive, Menu } from 'lucide-react';
 import useStore from '@/store/useStore';
 import { toast } from 'sonner';
 import FileUpload from './FileUpload';
+import CrustFileUpload from './CrustFileUpload';
 import FileList from './FileList';
 import AddCidDialog from './AddCidDialog';
 import StorageStats from './StorageStats';
 import FolderTree from './FolderTree';
 import TagManager from './TagManager';
 import MoveFileDialog from './MoveFileDialog';
+import MobileNav from './MobileNav';
 
 export default function Dashboard() {
   const [isDragging, setIsDragging] = useState(false);
@@ -21,6 +23,7 @@ export default function Dashboard() {
   const [showTagManager, setShowTagManager] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadMethod, setUploadMethod] = useState<'s3' | 'crust'>('s3');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const files = useStore((state) => state.files);
@@ -106,10 +109,11 @@ export default function Dashboard() {
               <p className="text-muted-foreground mt-1">安全的分布式文件存储平台</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="icon" onClick={handleRefresh} className="crystal-card">
+              <MobileNav />
+              <Button variant="outline" size="icon" onClick={handleRefresh} className="crystal-card hidden md:flex">
                 <RefreshCw className="h-4 w-4" />
               </Button>
-              <Button variant="outline" onClick={handleLogout} className="crystal-card">
+              <Button variant="outline" onClick={handleLogout} className="crystal-card hidden md:flex">
                 <LogOut className="mr-2 h-4 w-4" />
                 退出
               </Button>
@@ -123,7 +127,7 @@ export default function Dashboard() {
         {/* 主内容区域 */}
         <div className="grid gap-6 md:grid-cols-4">
           {/* 左侧边栏 */}
-          <div className="md:col-span-1 space-y-4">
+          <div className="md:col-span-1 space-y-4 hidden md:block">
             {/* 文件夹树 */}
             <Card className="crystal-card">
               <CardHeader>
@@ -227,7 +231,30 @@ export default function Dashboard() {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">文件操作</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-3">
+                  {/* 上传方式选择 */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant={uploadMethod === 's3' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setUploadMethod('s3')}
+                      className={`flex-1 ${uploadMethod === 's3' ? 'crystal-button text-white' : 'crystal-card'}`}
+                    >
+                      <HardDrive className="mr-2 h-4 w-4" />
+                      对象存储
+                    </Button>
+                    <Button
+                      variant={uploadMethod === 'crust' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setUploadMethod('crust')}
+                      className={`flex-1 ${uploadMethod === 'crust' ? 'crystal-button text-white' : 'crystal-card'}`}
+                    >
+                      <Globe className="mr-2 h-4 w-4" />
+                      Crust Network
+                    </Button>
+                  </div>
+
+                  {/* 上传和添加 CID 按钮 */}
                   <div className="flex gap-2">
                     <Input
                       ref={fileInputRef}
@@ -237,7 +264,7 @@ export default function Dashboard() {
                     />
                     <Button onClick={handleUploadClick} className="crystal-button flex-1 text-white">
                       <Upload className="mr-2 h-4 w-4" />
-                      上传文件
+                      上传
                     </Button>
                     <Button variant="outline" onClick={() => setShowAddCid(true)} className="crystal-card">
                       <Plus className="mr-2 h-4 w-4" />
@@ -289,8 +316,20 @@ export default function Dashboard() {
       </div>
 
       {/* 文件上传对话框 */}
-      {selectedFile && (
+      {selectedFile && uploadMethod === 's3' && (
         <FileUpload
+          file={selectedFile}
+          onClose={() => {
+            setSelectedFile(null);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+          }}
+        />
+      )}
+
+      {selectedFile && uploadMethod === 'crust' && (
+        <CrustFileUpload
           file={selectedFile}
           onClose={() => {
             setSelectedFile(null);

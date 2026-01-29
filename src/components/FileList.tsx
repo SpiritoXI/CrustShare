@@ -25,6 +25,7 @@ import ShareDialog from './ShareDialog';
 import DownloadDialog from './DownloadDialog';
 import VersionHistory from './VersionHistory';
 import PermissionManager from './PermissionManager';
+import FilePreview from './FilePreview';
 
 interface FileListProps {
   files: Array<{
@@ -45,6 +46,14 @@ export default function FileList({ files }: FileListProps) {
   const [downloadFile, setDownloadFile] = useState<{ id: string; name: string; cid: string } | null>(null);
   const [versionFile, setVersionFile] = useState<{ id: string; name: string } | null>(null);
   const [permissionFile, setPermissionFile] = useState<{ id: string; name: string } | null>(null);
+  const [previewFile, setPreviewFile] = useState<{
+    id: string;
+    name: string;
+    cid: string;
+    type: string;
+    size: number;
+    date: string;
+  } | null>(null);
 
   const deleteFile = useStore((state) => state.deleteFile);
   const updateFile = useStore((state) => state.updateFile);
@@ -147,10 +156,21 @@ export default function FileList({ files }: FileListProps) {
                 />
               </TableCell>
               <TableCell>
-                <FileIcon className="h-4 w-4 text-purple-500/70 crystal-icon inline mr-2" />
-                <span className="font-medium max-w-[150px] inline align-middle truncate">
-                  {file.name}
-                </span>
+                <div className="flex items-center gap-2">
+                  <FileIcon className="h-4 w-4 text-purple-500/70 crystal-icon" />
+                  <span className="font-medium max-w-[150px] truncate cursor-pointer hover:text-purple-500/80 transition-colors"
+                    onClick={() => file.cid && setPreviewFile({
+                      id: file.id,
+                      name: file.name,
+                      cid: file.cid,
+                      type: file.type,
+                      size: file.size,
+                      date: file.uploadDate,
+                    })}
+                  >
+                    {file.name}
+                  </span>
+                </div>
               </TableCell>
               <TableCell className="hidden sm:table-cell">{formatFileSize(file.size)}</TableCell>
               <TableCell className="hidden md:table-cell text-muted-foreground">
@@ -279,6 +299,19 @@ export default function FileList({ files }: FileListProps) {
         fileName={permissionFile.name}
         open={!!permissionFile}
         onOpenChange={(open) => !open && setPermissionFile(null)}
+      />
+    )}
+
+    {previewFile && (
+      <FilePreview
+        fileId={previewFile.id}
+        fileName={previewFile.name}
+        fileCid={previewFile.cid}
+        fileType={previewFile.type}
+        fileSize={previewFile.size}
+        uploadDate={previewFile.date}
+        open={!!previewFile}
+        onOpenChange={(open) => !open && setPreviewFile(null)}
       />
     )}
   </>
