@@ -44,6 +44,9 @@ export default function FileList({ files }: FileListProps) {
 
   const deleteFile = useStore((state) => state.deleteFile);
   const updateFile = useStore((state) => state.updateFile);
+  const selectedFiles = useStore((state) => state.selectedFiles);
+  const toggleFileSelection = useStore((state) => state.toggleFileSelection);
+  const clearSelection = useStore((state) => state.clearSelection);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -106,7 +109,20 @@ export default function FileList({ files }: FileListProps) {
       <Table>
         <TableHeader>
           <TableRow className="border-b border-purple-200/30">
-            <TableHead className="w-[50px]"></TableHead>
+            <TableHead className="w-[50px]">
+              <input
+                type="checkbox"
+                checked={files.length > 0 && selectedFiles.length === files.length}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    files.forEach((f) => toggleFileSelection(f.id));
+                  } else {
+                    clearSelection();
+                  }
+                }}
+                className="rounded"
+              />
+            </TableHead>
             <TableHead>文件名</TableHead>
             <TableHead className="hidden sm:table-cell">大小</TableHead>
             <TableHead className="hidden md:table-cell">上传日期</TableHead>
@@ -119,9 +135,19 @@ export default function FileList({ files }: FileListProps) {
           {files.map((file) => (
             <TableRow key={file.id} className="crystal-table-row border-b border-purple-100/30">
               <TableCell>
-                <FileIcon className="h-4 w-4 text-purple-600 crystal-icon" />
+                <input
+                  type="checkbox"
+                  checked={selectedFiles.includes(file.id)}
+                  onChange={() => toggleFileSelection(file.id)}
+                  className="rounded"
+                />
               </TableCell>
-              <TableCell className="font-medium max-w-[200px] truncate">{file.name}</TableCell>
+              <TableCell>
+                <FileIcon className="h-4 w-4 text-purple-600 crystal-icon inline mr-2" />
+                <span className="font-medium max-w-[150px] inline align-middle truncate">
+                  {file.name}
+                </span>
+              </TableCell>
               <TableCell className="hidden sm:table-cell">{formatFileSize(file.size)}</TableCell>
               <TableCell className="hidden md:table-cell text-muted-foreground">
                 {formatDate(file.uploadDate)}
