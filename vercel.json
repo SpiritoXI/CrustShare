@@ -13,5 +13,11 @@
       "CRUSTFILES_ACCESS_TOKEN": "@crustfiles-access-token",
       "CRUSTFILES_BASE_URL": "@crustfiles-base-url"
     }
+  },
+  "functions": {
+    "app/api/**/*": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
   }
 }

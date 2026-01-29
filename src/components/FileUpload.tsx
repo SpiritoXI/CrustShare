@@ -15,6 +15,9 @@ import useStore from '@/store/useStore';
 import { toast } from 'sonner';
 import { getProxy, type UploadProgress } from '@/lib/proxy';
 
+// Vercel 免费层的请求体大小限制（4.5MB）
+const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5MB in bytes
+
 interface FileUploadProps {
   file: File;
   onClose: () => void;
@@ -28,6 +31,7 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
 
   const addFile = useStore((state) => state.addFile);
   const updateFile = useStore((state) => state.updateFile);
+  const deleteFile = useStore((state) => state.deleteFile);
   const fileExists = useStore((state) => state.fileExists);
 
   useEffect(() => {
@@ -40,6 +44,17 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
       toast.error(`文件 "${file.name}" 已存在，请先删除或重命名`);
       setStatus('error');
       setError('文件已存在');
+      return;
+    }
+
+    // 检查文件大小
+    if (file.size > MAX_FILE_SIZE) {
+      const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
+      toast.error(
+        `文件 "${file.name}" 超过大小限制（${maxSizeMB}MB），当前大小：${formatFileSize(file.size)}`
+      );
+      setStatus('error');
+      setError(`文件超过 ${maxSizeMB}MB 限制`);
       return;
     }
 
@@ -99,11 +114,21 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
       }
     } catch (err) {
       setStatus('error');
-      setError(err instanceof Error ? err.message : '上传失败，请重试');
-      updateFile(fileId, {
-        status: 'error',
-      });
-      toast.error(`${file.name} 上传失败`);
+      const errorMessage = err instanceof Error ? err.message : '上传失败，请重试';
+      setError(errorMessage);
+
+      // 上传失败，从列表中删除该文件
+      deleteFile(fileId);
+
+      // 处理 413 错误
+      if (errorMessage.includes('413') || errorMessage.includes('Content Too Large')) {
+        const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
+        toast.error(
+          `文件 "${file.name}" 超过 Vercel 免费层限制（${maxSizeMB}MB），请升级到付费版或使用分片上传`
+        );
+      } else {
+        toast.error(`${file.name} 上传失败：${errorMessage}`);
+      }
     }
   };
 

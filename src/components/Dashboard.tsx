@@ -16,6 +16,18 @@ import TagManager from './TagManager';
 import MoveFileDialog from './DialogMove';
 import MobileNav from './MobileNav';
 
+// Vercel 免费层的请求体大小限制（4.5MB）
+const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5MB in bytes
+
+// 格式化文件大小
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+}
+
 export default function Dashboard() {
   const [isDragging, setIsDragging] = useState(false);
   const [showAddCid, setShowAddCid] = useState(false);
@@ -70,13 +82,35 @@ export default function Dashboard() {
 
     const droppedFiles = Array.from(e.dataTransfer.files);
     if (droppedFiles.length > 0) {
-      setSelectedFile(droppedFiles[0]);
+      const file = droppedFiles[0];
+
+      // 检查文件大小
+      if (file.size > MAX_FILE_SIZE) {
+        const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
+        toast.error(
+          `文件 "${file.name}" 超过大小限制（${maxSizeMB}MB），当前大小：${formatFileSize(file.size)}`
+        );
+        return;
+      }
+
+      setSelectedFile(file);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+
+      // 检查文件大小
+      if (file.size > MAX_FILE_SIZE) {
+        const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
+        toast.error(
+          `文件 "${file.name}" 超过大小限制（${maxSizeMB}MB），当前大小：${formatFileSize(file.size)}`
+        );
+        return;
+      }
+
+      setSelectedFile(file);
     }
   };
 
