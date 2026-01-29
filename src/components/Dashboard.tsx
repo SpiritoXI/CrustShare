@@ -7,13 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Upload, Search, RefreshCw, Plus, LogOut, FileIcon, Tag as TagIcon, Globe, Menu } from 'lucide-react';
 import useStore from '@/store/useStore';
 import { toast } from 'sonner';
-import FileUpload from './FileUpload';
-import FileList from './FileList';
-import AddCidDialog from './AddCidDialog';
-import StorageStats from './StorageStats';
+import FileUpload from './features/FileUpload';
+import FileList from './features/FileList';
+import AddCidDialog from './dialogs/AddCidDialog';
+import StorageStats from './features/StorageStats';
 import FolderTree from './FolderTree';
 import TagManager from './TagManager';
-import MoveFileDialog from './MoveFileDialog';
+import MoveFileDialog from './dialogs/MoveFileDialog';
 import MobileNav from './MobileNav';
 
 export default function Dashboard() {

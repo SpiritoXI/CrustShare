@@ -20,11 +20,11 @@ import {
 import { FileIcon, MoreVertical, CheckCircle, AlertCircle, Clock, Copy, Edit2, Trash2, Share2, Download, History, Shield } from 'lucide-react';
 import useStore from '@/store/useStore';
 import { toast } from 'sonner';
-import RenameDialog from './RenameDialog';
-import ShareDialog from './ShareDialog';
-import DownloadDialog from './DownloadDialog';
-import VersionHistory from './VersionHistory';
-import FilePreview from './FilePreview';
+import RenameDialog from '../dialogs/RenameDialog';
+import ShareDialog from '../dialogs/ShareDialog';
+import DownloadDialog from '../dialogs/DownloadDialog';
+import VersionHistory from '../VersionHistory';
+import FilePreview from '../FilePreview';
 
 interface FileListProps {
   files: Array<{
