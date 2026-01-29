@@ -17,6 +17,7 @@
 ## ✨ 特性
 
 - 🌐 **去中心化存储** - 基于 Crust Network 和 IPFS 技术
+- ⚡ **正向代理** - 完整的 CrustFiles.io 正向代理，无需跨域请求
 - 🔒 **权限管理** - 细粒度的用户权限控制
 - 📁 **文件夹管理** - 支持文件夹层级和嵌套
 - 🏷️ **标签系统** - 灵活的文件标签分类
@@ -182,7 +183,45 @@ const response = await fetch('/api/auth/login', {
 - **会话存储**：localStorage 或 Upstash Redis
 - **JWT 支持**：可选的 JWT 令牌验证
 
-#### 2. 文件上传
+#### 2. CrustFiles.io 代理（正向代理）
+
+完整的 CrustFiles.io 正向代理功能，无需直接跨域请求：
+
+```typescript
+import { getProxy } from '@/lib/proxy';
+
+// 创建代理实例
+const proxy = getProxy('your-auth-token');
+
+// 上传文件
+const result = await proxy.upload(file, {
+  onProgress: (progress) => {
+    console.log(`${progress.percentage}%`);
+  }
+});
+
+// 下载文件
+const blob = await proxy.downloadFile(cid, 'filename.pdf');
+
+// 获取文件信息
+const info = await proxy.getFileInfo(cid);
+
+// 自定义 API 调用
+const response = await proxy.get('/api/v0/version');
+```
+
+**核心特性**：
+- ✅ 完整透传所有 HTTP 方法（GET、POST、PUT、DELETE、PATCH）
+- ✅ 完整透传请求头和请求体（包括文件流）
+- ✅ 完整透传响应（状态码、响应头、响应体）
+- ✅ 保持鉴权状态（Cookie、Session、Token）
+- ✅ 支持实时上传进度
+- ✅ 支持单文件和多文件上传
+- ✅ 完全兼容 CrustFiles.io 原生 API
+
+详细文档：[代理功能文档](./PROXY.md)
+
+#### 3. 文件上传
 
 文件上传到 Crust Network/IPFS：
 

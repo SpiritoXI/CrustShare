@@ -10,8 +10,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { X, Download, CheckCircle, AlertCircle, Globe, Copy } from 'lucide-react';
+import { X, Download, CheckCircle, AlertCircle, Globe, Copy, Zap } from 'lucide-react';
 import { toast } from 'sonner';
+import { getProxy } from '@/lib/proxy';
 
 interface DownloadDialogProps {
   fileId: string;
@@ -43,18 +44,23 @@ export default function DownloadDialog({
     setError(null);
 
     try {
-      // 模拟下载进度
-      for (let i = 0; i <= 100; i += 10) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        setDownloadProgress(i);
-      }
+      // 使用代理下载文件
+      const proxy = getProxy();
 
-      // 从 CrustFiles.io 网关下载
-      const crustfilesGateway = `https://crustfiles.io/ipfs/${cid}`;
-      const response = await fetch(crustfilesGateway);
+      // 获取文件 URL
+      const fileUrl = proxy.getFileUrl(cid);
+
+      // 通过代理下载
+      const response = await fetch(fileUrl);
 
       if (!response.ok) {
-        throw new Error('从 IPFS 网关下载失败');
+        throw new Error('从 CrustFiles.io 代理下载失败');
+      }
+
+      // 模拟下载进度
+      for (let i = 0; i <= 100; i += 10) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        setDownloadProgress(i);
       }
 
       const blob = await response.blob();
@@ -68,7 +74,7 @@ export default function DownloadDialog({
       window.URL.revokeObjectURL(blobUrl);
 
       setDownloadStatus('completed');
-      toast.success('文件下载成功');
+      toast.success('文件通过代理下载成功');
     } catch (err) {
       setError(err instanceof Error ? err.message : '下载失败，请重试');
       setDownloadStatus('error');
@@ -83,15 +89,18 @@ export default function DownloadDialog({
       <DialogContent className="crystal-dialog sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span className="bg-gradient-to-r from-purple-500/80 to-pink-500/80 bg-clip-text text-transparent">
-              下载文件
-            </span>
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-purple-500/70" />
+              <span className="bg-gradient-to-r from-purple-500/80 to-pink-500/80 bg-clip-text text-transparent">
+                下载文件
+              </span>
+            </div>
             <Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6">
               <X className="h-4 w-4" />
             </Button>
           </DialogTitle>
           <DialogDescription>
-            从 CrustFiles.io 下载文件
+            通过代理从 CrustFiles.io 下载文件
           </DialogDescription>
         </DialogHeader>
 

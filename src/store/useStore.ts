@@ -51,6 +51,7 @@ export interface FileItem {
   type: string;
   uploadDate: string;
   cid?: string;
+  url?: string;  // 文件访问 URL
   status: 'uploading' | 'completed' | 'error';
   progress?: number;
   folderId?: string | null;

@@ -7,7 +7,7 @@
 ## 目录
 
 - [认证 API](#认证-api)
-- [文件上传 API (CrustFiles.io)](#文件上传-api-crustfilesio)
+- [代理 API (CrustFiles.io 正向代理)](#代理-api-crustfilesio-正向代理)
 - [文件上传 API (Crust Network)](#文件上传-api-crust-network)
 - [存储状态 API](#存储状态-api)
 - [错误处理](#错误处理)
@@ -86,6 +86,270 @@ curl -X POST http://localhost:5000/api/auth/login \
     "password": "admin",
     "isAdmin": true
   }'
+```
+
+---
+
+## 代理 API (CrustFiles.io 正向代理)
+
+CrustShare 提供完整的 CrustFiles.io 正向代理功能，允许前端通过后端代理访问所有 CrustFiles.io API，无需直接跨域请求。
+
+### 通用代理路由
+
+所有 CrustFiles.io 的 API 都可以通过以下路由访问：
+
+**代理端点**: `/api/proxy/[...path]`
+
+**支持的 HTTP 方法**: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`
+
+### 上传文件（通过代理）
+
+将文件通过代理上传到 CrustFiles.io。
+
+**端点**: `POST /api/proxy/upload`
+
+**请求头**:
+```http
+Content-Type: multipart/form-data
+Authorization: Bearer {token}  // 可选，如果需要认证
+```
+
+**请求体**:
+- `file` (File): 要上传的文件
+
+**成功响应** (200):
+```json
+{
+  "success": true,
+  "cid": "Qm...",           // IPFS CID
+  "name": "example.pdf",    // 文件名
+  "size": 1024,             // 文件大小（字节）
+  "url": "https://crustfiles.io/ipfs/Qm..."  // CrustFiles.io 网关 URL
+}
+```
+
+**错误响应** (400):
+```json
+{
+  "success": false,
+  "error": "未找到文件"
+}
+```
+
+**错误响应** (401):
+```json
+{
+  "success": false,
+  "error": "未授权"
+}
+```
+
+**错误响应** (500):
+```json
+{
+  "success": false,
+  "error": "代理请求失败"
+}
+```
+
+**示例**:
+
+```bash
+# 上传文件
+curl -X POST http://localhost:5000/api/proxy/upload \
+  -H "Authorization: Bearer your-token" \
+  -F "file=@/path/to/file.pdf"
+```
+
+### 下载文件（通过代理）
+
+通过代理从 CrustFiles.io 下载文件。
+
+**端点**: `GET /api/proxy/ipfs/{cid}`
+
+**请求头**:
+```http
+Authorization: Bearer {token}  // 可选，如果需要认证
+```
+
+**成功响应** (200):
+```
+二进制文件数据
+```
+
+**响应头**:
+```http
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="example.pdf"
+Content-Length: 1024
+```
+
+**错误响应** (404):
+```json
+{
+  "success": false,
+  "error": "HTTP 404"
+}
+```
+
+**错误响应** (500):
+```json
+{
+  "success": false,
+  "error": "代理请求失败"
+}
+```
+
+**示例**:
+
+```bash
+# 下载文件
+curl -X GET http://localhost:5000/api/proxy/ipfs/Qm... \
+  -H "Authorization: Bearer your-token" \
+  -o downloaded.pdf
+```
+
+### 获取文件信息
+
+通过代理获取文件元数据。
+
+**端点**: `GET /api/proxy/api/v0/file/stat?arg={cid}`
+
+**请求头**:
+```http
+Authorization: Bearer {token}  // 可选
+```
+
+**成功响应** (200):
+```json
+{
+  "Hash": "Qm...",
+  "Size": 1024,
+  "CumulativeSize": 2048,
+  "Blocks": 2,
+  "Type": "file"
+}
+```
+
+**示例**:
+
+```bash
+curl "http://localhost:5000/api/proxy/api/v0/file/stat?arg=Qm..." \
+  -H "Authorization: Bearer your-token"
+```
+
+### 自定义 API 代理
+
+通过代理访问任意 CrustFiles.io API。
+
+**端点**: `{METHOD} /api/proxy/{path}`
+
+**支持的路径**:
+- `/api/v0/add` - 添加文件
+- `/api/v0/cat` - 获取文件内容
+- `/api/v0/get` - 获取文件
+- `/api/v0/ls` - 列出目录
+- `/api/v0/file/ls` - 列出文件
+- 任何其他 CrustFiles.io API 路径
+
+**示例**:
+
+```bash
+# 获取 IPFS 节点版本
+curl http://localhost:5000/api/proxy/api/v0/version
+
+# 列出文件
+curl "http://localhost:5000/api/proxy/api/v0/ls?arg=Qm..."
+
+# 获取文件内容
+curl "http://localhost:5000/api/proxy/api/v0/cat?arg=Qm..." \
+  -H "Authorization: Bearer your-token"
+```
+
+### 前端使用
+
+代理客户端库提供简单的 API 来调用代理。
+
+```typescript
+import { getProxy } from '@/lib/proxy';
+
+// 创建代理实例
+const proxy = getProxy('your-auth-token');
+
+// 上传文件
+const result = await proxy.upload(file, {
+  onProgress: (progress) => {
+    console.log(`${progress.percentage}%`);
+  }
+});
+
+if (result.success) {
+  console.log('CID:', result.cid);
+  console.log('URL:', result.url);
+}
+
+// 下载文件
+const blob = await proxy.downloadFile(cid, 'filename.pdf');
+
+// 获取文件信息
+const info = await proxy.getFileInfo(cid);
+
+// 自定义 API 调用
+const response = await proxy.get('/api/v0/version');
+```
+
+### 代理特性
+
+#### 1. 完整透传
+- ✅ 所有 HTTP 方法（GET、POST、PUT、DELETE、PATCH）
+- ✅ 所有请求头（除了 hop-by-hop headers）
+- ✅ 所有请求体（包括文件流）
+- ✅ 所有响应（状态码、响应头、响应体）
+
+#### 2. 鉴权保持
+- ✅ Cookie 状态保持
+- ✅ Authorization header 保持
+- ✅ 自定义认证方式支持
+
+#### 3. CORS 支持
+- ✅ 自动处理 CORS 预检请求
+- ✅ 添加 CORS 响应头
+- ✅ 支持凭证
+
+#### 4. 错误处理
+- ✅ 完整的错误信息传递
+- ✅ HTTP 状态码透传
+- ✅ 详细的错误日志
+
+### 安全性
+
+#### 请求头过滤
+
+自动过滤以下请求头（不转发到 CrustFiles.io）：
+- `Connection`
+- `Keep-Alive`
+- `Proxy-Authenticate`
+- `Proxy-Authorization`
+- `TE`
+- `Trailers`
+- `Transfer-Encoding`
+- `Upgrade`
+- `Host`
+
+#### 响应头过滤
+
+自动过滤以下响应头：
+- CORS headers（由 Next.js 重新设置）
+- Hop-by-hop headers
+
+### 环境变量
+
+```env
+# CrustFiles.io 网关地址
+CRUSTFILES_BASE_URL=https://crustfiles.io
+
+# （可选）Access Token
+CRUSTFILES_ACCESS_TOKEN=your_access_token
 ```
 
 ---

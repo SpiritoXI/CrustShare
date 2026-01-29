@@ -10,9 +10,10 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { FileIcon, X, CheckCircle, AlertCircle, Globe } from 'lucide-react';
+import { FileIcon, X, CheckCircle, AlertCircle, Globe, Zap } from 'lucide-react';
 import useStore from '@/store/useStore';
 import { toast } from 'sonner';
+import { getProxy, type UploadProgress } from '@/lib/proxy';
 
 interface FileUploadProps {
   file: File;
@@ -56,46 +57,34 @@ export default function FileUpload({ file, onClose }: FileUploadProps) {
     });
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      // 使用代理客户端上传文件
+      const proxy = getProxy();
 
-      // 模拟进度更新
-      let currentProgress = 0;
-      const progressInterval = setInterval(() => {
-        if (currentProgress < 90) {
-          currentProgress += Math.random() * 10;
-          setProgress(Math.min(currentProgress, 90));
-          updateFile(fileId, { progress: Math.min(currentProgress, 90) });
-        }
-      }, 200);
-
-      // 调用 CrustFiles.io 上传 API
-      const response = await fetch('/api/crustfiles/upload', {
-        method: 'POST',
-        body: formData,
+      const result = await proxy.upload(file, {
+        onProgress: (progress: UploadProgress) => {
+          const percentage = Math.round(progress.percentage);
+          setProgress(percentage);
+          updateFile(fileId, { progress: percentage });
+        },
       });
 
-      clearInterval(progressInterval);
+      if (result.success) {
+        setProgress(100);
+        setCid(result.cid!);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '上传失败');
+        // 上传完成
+        setStatus('completed');
+        updateFile(fileId, {
+          status: 'completed',
+          progress: 100,
+          cid: result.cid,
+          url: result.url,
+        });
+
+        toast.success(`${file.name} 已通过代理上传到 CrustFiles.io`);
+      } else {
+        throw new Error(result.error || '上传失败');
       }
-
-      const data = await response.json();
-
-      setProgress(100);
-      setCid(data.cid);
-
-      // 上传完成
-      setStatus('completed');
-      updateFile(fileId, {
-        status: 'completed',
-        progress: 100,
-        cid: data.cid,
-      });
-
-      toast.success(`${file.name} 已上传到 CrustFiles.io`);
     } catch (err) {
       setStatus('error');
       setError(err instanceof Error ? err.message : '上传失败，请重试');
