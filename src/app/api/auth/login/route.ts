@@ -1,24 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccessToken } from '@/lib/auth';
+import { verifyPinCode } from '@/lib/auth';
 
 /**
  * 登录 API 路由
- * 验证用户 Access Token
+ * 验证用户 PIN 码
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { accessToken } = body;
+    const { pin } = body;
 
-    if (!accessToken) {
+    if (!pin) {
       return NextResponse.json(
-        { success: false, error: 'Access Token 不能为空' },
+        { success: false, error: 'PIN 码不能为空' },
         { status: 400 }
       );
     }
 
-    // 验证 Access Token
-    const isValid = verifyAccessToken(accessToken);
+    // 验证 PIN 码
+    const isValid = verifyPinCode(pin);
 
     if (isValid) {
       return NextResponse.json({
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       });
     } else {
       return NextResponse.json(
-        { success: false, error: 'Access Token 无效' },
+        { success: false, error: 'PIN 码错误，请重试' },
         { status: 401 }
       );
     }

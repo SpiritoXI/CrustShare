@@ -73,9 +73,9 @@ cp .env.example .env
 CRUSTFILES_ACCESS_TOKEN=your_crustfiles_access_token_here
 CRUSTFILES_BASE_URL=https://crustfiles.io
 
-# Access Token 配置（用于用户认证）
-# 生成随机 Token: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-ACCESS_TOKEN=your-access-token-here
+# PIN 码配置（用于用户认证）
+# 默认 PIN 码：123456
+PIN_CODE=123456
 
 # CrustFiles.io 配置（文件上传和下载）
 CRUSTFILES_ACCESS_TOKEN=your_crustfiles_access_token_here
@@ -86,12 +86,10 @@ UPSTASH_REDIS_REST_URL=https://your-redis-url.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your-redis-token
 ```
 
-**生成 Access Token**：
-
-```bash
-# 使用命令行
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+**PIN 码说明**：
+- 默认 PIN 码：`123456`
+- 建议：使用 4-6 位数字，易于记忆
+- 修改：在环境变量中设置 `PIN_CODE`
 
 ### 开发
 
@@ -162,7 +160,7 @@ crustshare/
 
 #### 1. 用户认证
 
-基于 Access Token 的认证系统：
+基于 PIN 码的认证系统：
 
 ```typescript
 // 登录验证
@@ -170,12 +168,12 @@ const response = await fetch('/api/auth/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    accessToken: 'your-access-token'
+    pin: '123456'
   })
 });
 ```
 
-- **Access Token**：安全的令牌认证
+- **PIN 码认证**：简单易记的 4-6 位数字
 - **会话存储**：localStorage
 - **单用户模式**：简化认证，无需角色管理
 
@@ -388,8 +386,8 @@ docker run -p 5000:5000 crustshare
 ### 环境变量
 
 ```env
-# Access Token 配置（必须）
-ACCESS_TOKEN=your-access-token-here
+# PIN 码配置（必须）
+PIN_CODE=123456
 
 # CrustFiles.io 配置（必须）
 CRUSTFILES_ACCESS_TOKEN=your_crustfiles_access_token_here
@@ -402,7 +400,7 @@ UPSTASH_REDIS_REST_TOKEN=your-redis-token
 
 **配置说明**：
 
-1. **Access Token**：必须配置。使用 `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` 生成。
+1. **PIN 码**：必须配置。建议使用 4-6 位数字，默认为 `123456`。
 2. **CrustFiles.io**：必须配置。访问 [CrustFiles.io](https://crustfiles.io/) 获取 Access Token。
 3. **Upstash Redis**：用于会话管理和文件元数据持久化。如果未配置，将使用 localStorage（仅适用于开发/单用户场景）。
 
