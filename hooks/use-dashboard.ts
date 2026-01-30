@@ -32,9 +32,7 @@ export function useDashboard() {
 
   // UI State
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"list" | "grid">(
-    (localStorage.getItem("viewMode") as "list" | "grid") || "list"
-  );
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [isLoading, setIsLoading] = useState(true);
   const [dragOver, setDragOver] = useState(false);
   const [copiedId, setCopiedId] = useState<string | number | null>(null);
@@ -67,15 +65,9 @@ export function useDashboard() {
   const [isAddingCid, setIsAddingCid] = useState(false);
   const [isDetectingCid, setIsDetectingCid] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(
-    localStorage.getItem("darkMode") === "true"
-  );
-  const [itemsPerPage, setItemsPerPage] = useState<number>(
-    parseInt(localStorage.getItem("itemsPerPage") || "20")
-  );
-  const [autoRefresh, setAutoRefresh] = useState(
-    localStorage.getItem("autoRefresh") === "true"
-  );
+  const [darkMode, setDarkMode] = useState(false);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(20);
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [selectedFileForDownload, setSelectedFileForDownload] = useState<FileRecord | null>(null);
   const [addGatewayModalOpen, setAddGatewayModalOpen] = useState(false);
@@ -87,12 +79,23 @@ export function useDashboard() {
   const [previewFile, setPreviewFile] = useState<FileRecord | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // Load data
+  // Load data and settings from localStorage
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        // 数据已经从 store 加载，这里可以添加额外的初始化逻辑
+        // 从 localStorage 加载设置
+        const savedViewMode = localStorage.getItem("viewMode") as "list" | "grid";
+        if (savedViewMode) setViewMode(savedViewMode);
+
+        const savedDarkMode = localStorage.getItem("darkMode");
+        if (savedDarkMode !== null) setDarkMode(savedDarkMode === "true");
+
+        const savedItemsPerPage = localStorage.getItem("itemsPerPage");
+        if (savedItemsPerPage) setItemsPerPage(parseInt(savedItemsPerPage));
+
+        const savedAutoRefresh = localStorage.getItem("autoRefresh");
+        if (savedAutoRefresh !== null) setAutoRefresh(savedAutoRefresh === "true");
       } finally {
         setIsLoading(false);
       }
