@@ -171,6 +171,14 @@ interface AddCidBody {
   size?: number;
   folderId?: string;
 }
+interface MoveFilesBody {
+  fileIds: (string | number)[];
+  folderId: string;
+}
+interface CopyFilesBody {
+  fileIds: (string | number)[];
+  folderId: string;
+}
 
 export async function onRequestPost(context: Context): Promise<Response> {
   const { request, env } = context;
@@ -190,7 +198,9 @@ export async function onRequestPost(context: Context): Promise<Response> {
       | SaveFileBody
       | DeleteFileBody
       | CreateFolderBody
-      | AddCidBody;
+      | AddCidBody
+      | MoveFilesBody
+      | CopyFilesBody;
 
     switch (action) {
       case "save_file": {
@@ -260,7 +270,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
           id: Date.now().toString(),
           cid: addCidBody.cid,
           name: addCidBody.name,
-          size: addCidBody.size || 0,
+          size: Number(addCidBody.size) || 0,
           folder_id: addCidBody.folderId || "default",
           date: new Date().toLocaleString(),
           verified: false,
@@ -272,6 +282,88 @@ export async function onRequestPost(context: Context): Promise<Response> {
         );
         return new Response(
           JSON.stringify({ success: true, data: file } as ApiResponse<FileRecord>),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      case "move_files": {
+        const moveBody = body as MoveFilesBody;
+        const files = await upstashCommand<string[]>(
+          env.UPSTASH_URL,
+          env.UPSTASH_TOKEN,
+          ["LRANGE", FILES_KEY, "0", "-1"]
+        );
+
+        let movedCount = 0;
+        if (Array.isArray(files)) {
+          for (let i = 0; i < files.length; i++) {
+            try {
+              const file = JSON.parse(files[i]) as FileRecord;
+              if (moveBody.fileIds.includes(file.id)) {
+                // 更新文件的 folder_id
+                const updatedFile = { ...file, folder_id: moveBody.folderId };
+                // 删除旧记录
+                await upstashCommand(
+                  env.UPSTASH_URL,
+                  env.UPSTASH_TOKEN,
+                  ["LREM", FILES_KEY, 0, files[i]]
+                );
+                // 添加更新后的记录
+                await upstashCommand(
+                  env.UPSTASH_URL,
+                  env.UPSTASH_TOKEN,
+                  ["LPUSH", FILES_KEY, JSON.stringify(updatedFile)]
+                );
+                movedCount++;
+              }
+            } catch {
+              // 跳过无效文件
+            }
+          }
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, data: { moved: movedCount } } as ApiResponse<{ moved: number }>),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      case "copy_files": {
+        const copyBody = body as CopyFilesBody;
+        const files = await upstashCommand<string[]>(
+          env.UPSTASH_URL,
+          env.UPSTASH_TOKEN,
+          ["LRANGE", FILES_KEY, "0", "-1"]
+        );
+
+        let copiedCount = 0;
+        if (Array.isArray(files)) {
+          for (const fileStr of files) {
+            try {
+              const file = JSON.parse(fileStr) as FileRecord;
+              if (copyBody.fileIds.includes(file.id)) {
+                // 创建文件副本，使用新的ID
+                const copiedFile: FileRecord = {
+                  ...file,
+                  id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                  folder_id: copyBody.folderId,
+                  date: new Date().toLocaleString(),
+                };
+                await upstashCommand(
+                  env.UPSTASH_URL,
+                  env.UPSTASH_TOKEN,
+                  ["LPUSH", FILES_KEY, JSON.stringify(copiedFile)]
+                );
+                copiedCount++;
+              }
+            } catch {
+              // 跳过无效文件
+            }
+          }
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, data: { copied: copiedCount } } as ApiResponse<{ copied: number }>),
           { status: 200, headers: { "Content-Type": "application/json" } }
         );
       }

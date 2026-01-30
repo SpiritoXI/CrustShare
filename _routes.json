@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "include": ["/*"],
+  "exclude": [
+    "/_next/*",
+    "/static/*",
+    "/*.ico",
+    "/*.png",
+    "/*.jpg",
+    "/*.jpeg",
+    "/*.svg",
+    "/*.css",
+    "/*.js"
+  ],
+  "routes": [
+    {
+      "src": "/share/(.*)",
+      "dest": "/share/placeholder/index.html"
+    }
+  ]
+}

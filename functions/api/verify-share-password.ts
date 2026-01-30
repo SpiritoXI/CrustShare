@@ -21,6 +21,24 @@ interface ShareInfo {
   createdAt: number;
 }
 
+// CORS 响应头
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+// 处理 CORS 预检请求
+function handleCors(request: Request): Response | null {
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
+  }
+  return null;
+}
+
 async function upstashCommand<T = unknown>(
   upstashUrl: string,
   upstashToken: string,
@@ -52,6 +70,10 @@ async function upstashCommand<T = unknown>(
 export async function onRequestPost(context: Context): Promise<Response> {
   const { request, env } = context;
 
+  // 处理 CORS 预检请求
+  const corsResponse = handleCors(request);
+  if (corsResponse) return corsResponse;
+
   try {
     const body = await request.json() as { cid: string; password: string };
     const { cid, password } = body;
@@ -59,7 +81,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     if (!cid || !password) {
       return new Response(
         JSON.stringify({ error: "缺少CID或密码" } as ApiResponse),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -72,7 +94,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     if (!result) {
       return new Response(
         JSON.stringify({ error: "分享不存在" } as ApiResponse),
-        { status: 404, headers: { "Content-Type": "application/json" } }
+        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -85,7 +107,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
       if (Date.now() > expiryTime) {
         return new Response(
           JSON.stringify({ error: "分享已过期" } as ApiResponse),
-          { status: 410, headers: { "Content-Type": "application/json" } }
+          { status: 410, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
     }
@@ -94,7 +116,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     if (shareInfo.password !== password) {
       return new Response(
         JSON.stringify({ error: "密码错误" } as ApiResponse),
-        { status: 401, headers: { "Content-Type": "application/json" } }
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -110,13 +132,13 @@ export async function onRequestPost(context: Context): Promise<Response> {
           expiry: shareInfo.expiry,
         },
       } as ApiResponse),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "验证密码失败";
     return new Response(
       JSON.stringify({ error: errorMessage } as ApiResponse),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 }

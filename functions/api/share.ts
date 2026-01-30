@@ -21,6 +21,24 @@ interface ShareInfo {
   createdAt: number;
 }
 
+// CORS 响应头
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-auth-token",
+};
+
+// 处理 CORS 预检请求
+function handleCors(request: Request): Response | null {
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
+  }
+  return null;
+}
+
 async function upstashCommand<T = unknown>(
   upstashUrl: string,
   upstashToken: string,
@@ -51,13 +69,18 @@ async function upstashCommand<T = unknown>(
 // GET: 获取分享信息（公开访问，不需要认证）
 export async function onRequestGet(context: Context): Promise<Response> {
   const { request, env } = context;
+
+  // 处理 CORS 预检请求
+  const corsResponse = handleCors(request);
+  if (corsResponse) return corsResponse;
+
   const url = new URL(request.url);
   const cid = url.searchParams.get("cid");
 
   if (!cid) {
     return new Response(
       JSON.stringify({ error: "缺少CID参数" } as ApiResponse),
-      { status: 400, headers: { "Content-Type": "application/json" } }
+      { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 
@@ -78,7 +101,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
             hasPassword: false,
           },
         } as ApiResponse),
-        { status: 200, headers: { "Content-Type": "application/json" } }
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -97,7 +120,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
         );
         return new Response(
           JSON.stringify({ error: "分享已过期" } as ApiResponse),
-          { status: 410, headers: { "Content-Type": "application/json" } }
+          { status: 410, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
     }
@@ -114,13 +137,13 @@ export async function onRequestGet(context: Context): Promise<Response> {
           expiry: shareInfo.expiry,
         },
       } as ApiResponse),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "获取分享信息失败";
     return new Response(
       JSON.stringify({ error: errorMessage } as ApiResponse),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 }
@@ -129,12 +152,16 @@ export async function onRequestGet(context: Context): Promise<Response> {
 export async function onRequestPost(context: Context): Promise<Response> {
   const { request, env } = context;
 
+  // 处理 CORS 预检请求
+  const corsResponse = handleCors(request);
+  if (corsResponse) return corsResponse;
+
   // 验证认证（使用简单的密码验证，与现有系统保持一致）
   const authHeader = request.headers.get("x-auth-token");
   if (!authHeader) {
     return new Response(
       JSON.stringify({ error: "未授权" } as ApiResponse),
-      { status: 401, headers: { "Content-Type": "application/json" } }
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 
@@ -144,7 +171,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     if (!body.cid) {
       return new Response(
         JSON.stringify({ error: "缺少CID" } as ApiResponse),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -165,13 +192,13 @@ export async function onRequestPost(context: Context): Promise<Response> {
 
     return new Response(
       JSON.stringify({ success: true } as ApiResponse),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "保存分享信息失败";
     return new Response(
       JSON.stringify({ error: errorMessage } as ApiResponse),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 }
@@ -180,11 +207,15 @@ export async function onRequestPost(context: Context): Promise<Response> {
 export async function onRequestDelete(context: Context): Promise<Response> {
   const { request, env } = context;
 
+  // 处理 CORS 预检请求
+  const corsResponse = handleCors(request);
+  if (corsResponse) return corsResponse;
+
   const authHeader = request.headers.get("x-auth-token");
   if (!authHeader) {
     return new Response(
       JSON.stringify({ error: "未授权" } as ApiResponse),
-      { status: 401, headers: { "Content-Type": "application/json" } }
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 
@@ -194,7 +225,7 @@ export async function onRequestDelete(context: Context): Promise<Response> {
   if (!cid) {
     return new Response(
       JSON.stringify({ error: "缺少CID参数" } as ApiResponse),
-      { status: 400, headers: { "Content-Type": "application/json" } }
+      { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 
@@ -207,13 +238,13 @@ export async function onRequestDelete(context: Context): Promise<Response> {
 
     return new Response(
       JSON.stringify({ success: true } as ApiResponse),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "删除分享失败";
     return new Response(
       JSON.stringify({ error: errorMessage } as ApiResponse),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 }

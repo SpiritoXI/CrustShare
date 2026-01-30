@@ -117,7 +117,7 @@ export const api = {
                 // 如果是单个文件
                 return {
                   name: `file-${cid.slice(0, 8)}`,
-                  size: obj.Size || 0,
+                  size: Number(obj.Size) || 0,
                 };
               }
             }
@@ -144,7 +144,7 @@ export const api = {
             const contentLength = response.headers.get("content-length");
             return {
               name: `file-${cid.slice(0, 8)}`,
-              size: contentLength ? parseInt(contentLength) : 0,
+              size: contentLength ? (parseInt(contentLength) || 0) : 0,
             };
           }
         } catch {
@@ -194,6 +194,16 @@ export const api = {
     const data: ApiResponse<{ moved: number }> = await response.json();
     if (!data.success) throw new Error(data.error || "移动文件失败");
     return data.data?.moved || 0;
+  },
+
+  async copyFiles(fileIds: (string | number)[], folderId: string): Promise<number> {
+    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=copy_files`, {
+      method: "POST",
+      body: JSON.stringify({ fileIds, folderId }),
+    });
+    const data: ApiResponse<{ copied: number }> = await response.json();
+    if (!data.success) throw new Error(data.error || "复制文件失败");
+    return data.data?.copied || 0;
   },
 
   async loadFolders(): Promise<Folder[]> {
@@ -418,24 +428,36 @@ export const gatewayApi = {
   },
 
   async testAllGateways(gateways: Gateway[]): Promise<Gateway[]> {
-    const testGateway = async (gateway: Gateway): Promise<Gateway> => {
-      const result = await this.testGateway(gateway);
-      return {
-        ...gateway,
-        available: result.available,
-        latency: result.latency,
-        lastChecked: Date.now(),
-      };
-    };
-
-    const batchSize = CONFIG.GATEWAY_TEST.CONCURRENT_LIMIT;
     const results: Gateway[] = [];
+    const maxConcurrency = CONFIG.GATEWAY_TEST.CONCURRENT_LIMIT;
+    const executing: Promise<void>[] = [];
 
-    for (let i = 0; i < gateways.length; i += batchSize) {
-      const batch = gateways.slice(i, i + batchSize);
-      const batchResults = await Promise.all(batch.map(testGateway));
-      results.push(...batchResults);
+    for (const gateway of gateways) {
+      const testPromise = (async () => {
+        const result = await this.testGateway(gateway);
+        results.push({
+          ...gateway,
+          available: result.available,
+          latency: result.latency,
+          lastChecked: Date.now(),
+        });
+      })();
+
+      executing.push(testPromise);
+
+      // 当并发数达到上限时，等待最快的完成
+      if (executing.length >= maxConcurrency) {
+        await Promise.race(executing);
+        // 清理已完成的 Promise
+        const index = executing.findIndex(p => p === testPromise);
+        if (index > -1) {
+          executing.splice(index, 1);
+        }
+      }
     }
+
+    // 等待所有剩余的测试完成
+    await Promise.all(executing);
 
     return results.sort((a, b) => {
       if (a.available !== b.available) return a.available ? -1 : 1;

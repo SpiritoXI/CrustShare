@@ -163,10 +163,38 @@ export function getImageMimeType(filename: string): string {
   return IMAGE_MIME_TYPES[ext] || "image/jpeg";
 }
 
+/**
+ * 验证 CID 是否有效
+ * @deprecated 请使用 security.ts 中的 isValidCID 函数
+ * @param cid - CID 字符串
+ * @returns 是否有效
+ */
 export function isValidCID(cid: string): boolean {
   if (!cid || typeof cid !== "string") return false;
-  const cidPattern = /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|bafy[a-zA-Z0-9]{55}|bafk[a-zA-Z0-9]{55})$/;
-  return cidPattern.test(cid.trim());
+  
+  const trimmedCid = cid.trim();
+  
+  // 长度检查
+  if (trimmedCid.length < 1 || trimmedCid.length > 128) {
+    return false;
+  }
+  
+  // CID v0: Qm + 44 个 Base58 字符
+  const cidV0Pattern = /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/;
+  
+  // CID v1: bafy/bafk/bag + Base32 字符
+  const cidV1Pattern = /^baf[a-z0-9]{52,58}$/;
+  
+  if (!cidV0Pattern.test(trimmedCid) && !cidV1Pattern.test(trimmedCid)) {
+    return false;
+  }
+  
+  // 防止路径遍历
+  if (trimmedCid.includes('..') || trimmedCid.includes('/') || trimmedCid.includes('\\')) {
+    return false;
+  }
+  
+  return true;
 }
 
 export function sanitizeHtml(html: string): string {

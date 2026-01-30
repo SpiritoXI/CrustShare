@@ -32,6 +32,7 @@ interface FileState {
   updateFile: (id: string | number, updates: Partial<FileRecord>) => void;
   deleteFile: (id: string | number) => void;
   setSelectedFolder: (folderId: string | null) => void;
+  setSelectedFiles: (files: string[] | ((prev: string[]) => string[])) => void;
   toggleFileSelection: (fileId: string) => void;
   selectAllFiles: () => void;
   clearSelection: () => void;
@@ -220,6 +221,14 @@ export const useFileStore = create<FileState>()((set, get) => ({
 
   setSelectedFolder: (folderId) => set({ selectedFolder: folderId, currentPage: 1 }),
 
+  setSelectedFiles: (files) => {
+    if (typeof files === 'function') {
+      set((state) => ({ selectedFiles: files(state.selectedFiles) }));
+    } else {
+      set({ selectedFiles: files });
+    }
+  },
+
   toggleFileSelection: (fileId) => {
     set((state) => ({
       selectedFiles: state.selectedFiles.includes(fileId)
@@ -248,7 +257,7 @@ export const useFileStore = create<FileState>()((set, get) => ({
 
   updateStorageStats: () => {
     const { files, folders } = get();
-    const totalSize = files.reduce((sum, f) => sum + (f.size || 0), 0);
+    const totalSize = files.reduce((sum, f) => sum + (Number(f.size) || 0), 0);
     set({
       storageStats: {
         totalFiles: files.length,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Image, Film, Music } from "lucide-react";
@@ -46,7 +46,7 @@ function StaticPlaceholder() {
   );
 }
 
-// 主要内容
+// 主要内容组件
 function SharePageContent({ cid }: { cid: string }) {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
@@ -214,16 +214,28 @@ function SharePageContent({ cid }: { cid: string }) {
 
 // 主组件
 export default function SharePage() {
+  const [isClient, setIsClient] = useState(false);
+  const [cid, setCid] = useState<string>("");
   const params = useParams();
-  const cid = params.cid as string;
 
-  if (cid === "placeholder") {
+  useEffect(() => {
+    setIsClient(true);
+
+    // 从 URL 路径中提取 CID
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    const cidFromPath = pathParts[pathParts.length - 1];
+
+    if (cidFromPath && cidFromPath !== 'placeholder') {
+      setCid(cidFromPath);
+    } else if (params.cid && params.cid !== 'placeholder') {
+      setCid(params.cid as string);
+    }
+  }, [params.cid]);
+
+  // 在服务器端或 CID 未获取到时显示占位符
+  if (!isClient || !cid || cid === "placeholder") {
     return <StaticPlaceholder />;
   }
 
-  return (
-    <Suspense fallback={<LoadingState />}>
-      <SharePageContent cid={cid} />
-    </Suspense>
-  );
+  return <SharePageContent cid={cid} />;
 }

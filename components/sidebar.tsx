@@ -34,6 +34,8 @@ interface SidebarProps {
   onEditFolder: (folder: FolderType) => void;
   onDeleteFolder: (folderId: string) => void;
   onLogout: () => void;
+  onRecentUploadsClick?: () => void;
+  isRecentUploadsActive?: boolean;
 }
 
 export function Sidebar({
@@ -52,6 +54,8 @@ export function Sidebar({
   onEditFolder,
   onDeleteFolder,
   onLogout,
+  onRecentUploadsClick,
+  isRecentUploadsActive,
 }: SidebarProps) {
   return (
     <motion.aside
@@ -97,7 +101,11 @@ export function Sidebar({
             <Folder className="mr-2 h-4 w-4" />
             全部文件
           </Button>
-          <Button variant="ghost" className="w-full justify-start">
+          <Button
+            variant="ghost"
+            className={`w-full justify-start ${isRecentUploadsActive ? "bg-white/30" : ""}`}
+            onClick={onRecentUploadsClick}
+          >
             <Upload className="mr-2 h-4 w-4" />
             最近上传
           </Button>

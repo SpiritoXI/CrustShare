@@ -79,12 +79,24 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div
+      className="flex min-h-screen items-center justify-center p-4 relative"
+      style={{
+        backgroundImage: "url('/background.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      <div
+        className="absolute inset-0 bg-black/30"
+        style={{ backdropFilter: "blur(0px)" }}
+      />
       <motion.div
+        className="relative z-10 w-full max-w-md"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
       >
         <Card className="glass border-0 shadow-2xl">
           <CardHeader className="space-y-1 text-center">

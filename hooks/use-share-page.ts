@@ -111,9 +111,14 @@ export function useSharePage(cid: string) {
   }, [cid]);
 
   // 测试网关
-  const testGateways = useCallback(async () => {
+  const testGateways = useCallback(async (forceRefresh = false) => {
     setIsTestingGateways(true);
     try {
+      // 如果强制刷新，清除缓存
+      if (forceRefresh) {
+        localStorage.removeItem(CONFIG.GATEWAY_TEST.CHECK_CACHE_KEY);
+      }
+
       const allGateways = await getAllGateways();
       const results = await gatewayApi.testAllGateways(allGateways);
       setGateways(results);

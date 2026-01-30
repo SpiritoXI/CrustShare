@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Globe, RefreshCw, Plus, ExternalLink, Trash2, Zap } from "lucide-react";
+import { Globe, RefreshCw, Plus, ExternalLink, Trash2, Zap, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/modal";
 import type { Gateway } from "@/types";
@@ -12,11 +12,13 @@ interface GatewayModalProps {
   gateways: Gateway[];
   customGateways: Gateway[];
   isTesting: boolean;
+  isFetchingPublic: boolean;
   onRefresh: () => void;
   onAdd: () => void;
   onTest: (gateway: Gateway) => void;
   onRemove: (name: string) => void;
   onUpdate: (gateways: Gateway[]) => void;
+  onFetchPublic: () => void;
 }
 
 export function GatewayModal({
@@ -25,11 +27,13 @@ export function GatewayModal({
   gateways,
   customGateways,
   isTesting,
+  isFetchingPublic,
   onRefresh,
   onAdd,
   onTest,
   onRemove,
   onUpdate,
+  onFetchPublic,
 }: GatewayModalProps) {
   const title = (
     <div>
@@ -47,6 +51,10 @@ export function GatewayModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="xl">
       <div className="flex items-center justify-end space-x-2 mb-4">
+        <Button variant="outline" size="sm" onClick={onFetchPublic} disabled={isFetchingPublic || isTesting}>
+          <Download className={`h-4 w-4 mr-1 ${isFetchingPublic ? "animate-spin" : ""}`} />
+          获取公共网关
+        </Button>
         <Button variant="outline" size="sm" onClick={onAdd}>
           <Plus className="h-4 w-4 mr-1" />
           添加网关
