@@ -78,11 +78,27 @@ export async function onRequestPost(context: Context): Promise<Response> {
   const { request, env } = context;
 
   try {
-    const body = (await request.json()) as VerifyPasswordBody;
+    // 检查环境变量
+    console.log('Environment check:', {
+      hasAdminPasswordHash: !!env.ADMIN_PASSWORD_HASH,
+      hashLength: env.ADMIN_PASSWORD_HASH?.length
+    });
+
+    let body: VerifyPasswordBody;
+    try {
+      body = await request.json() as VerifyPasswordBody;
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return new Response(
+        JSON.stringify({ error: "请求格式错误：无法解析 JSON" } as ApiResponse),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
     const { password } = body;
     const expectedPasswordHash = env.ADMIN_PASSWORD_HASH;
 
     if (!expectedPasswordHash) {
+      console.error('ADMIN_PASSWORD_HASH not set');
       return new Response(
         JSON.stringify({ error: "服务器配置错误：未设置 ADMIN_PASSWORD_HASH" } as ApiResponse),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -138,9 +154,10 @@ export async function onRequestPost(context: Context): Promise<Response> {
     }
   } catch (error) {
     console.error('密码验证错误:', error);
+    const errorMessage = error instanceof Error ? error.message : '未知错误';
     return new Response(
-      JSON.stringify({ error: "请求处理失败" } as ApiResponse),
-      { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      JSON.stringify({ error: "请求处理失败", details: errorMessage } as ApiResponse),
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 }
