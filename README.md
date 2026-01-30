@@ -84,7 +84,7 @@ UPSTASH_URL=https://your-url.upstash.io
 UPSTASH_TOKEN=your-token
 
 # 管理员密码（SHA256 哈希）
-ADMIN_PASSWORD_HASH=your-hash
+ADMIN_PASSWORD_HASH=your-password-hash
 
 # Crust Token
 CRUST_TOKEN=your-token
