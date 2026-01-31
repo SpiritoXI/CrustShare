@@ -18,6 +18,8 @@ export function useDashboard() {
     setFiles, // 从 store 获取 setFiles
     folders, // 从 store 获取文件夹
     setFolders, // 从 store 获取 setFolders
+    shares, // 从 store 获取分享列表
+    setShares, // 从 store 获取 setShares
   } = useFileStore();
 
   // Calculate total size
@@ -38,6 +40,7 @@ export function useDashboard() {
   const [copiedId, setCopiedId] = useState<string | number | null>(null);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [isRecentUploads, setIsRecentUploads] = useState(false);
+  const [isMyShares, setIsMyShares] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
 
   // Upload
@@ -79,7 +82,7 @@ export function useDashboard() {
   const [previewFile, setPreviewFile] = useState<FileRecord | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // Load data and settings from localStorage
+  // Load data and settings from localStorage and server
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
@@ -96,13 +99,28 @@ export function useDashboard() {
 
         const savedAutoRefresh = localStorage.getItem("autoRefresh");
         if (savedAutoRefresh !== null) setAutoRefresh(savedAutoRefresh === "true");
+
+        // 从服务器加载文件列表
+        const loadedFiles = await api.loadFiles();
+        setFiles(loadedFiles);
+
+        // 从服务器加载文件夹列表
+        const loadedFolders = await api.loadFolders();
+        setFolders(loadedFolders);
+
+        // 从服务器加载分享列表
+        const loadedShares = await api.loadShares();
+        setShares(loadedShares);
+      } catch (error) {
+        showToast("加载数据失败", "error");
+        console.error("Failed to load data:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadData();
-  }, []);
+  }, [setFiles, setFolders, setShares, showToast]);
 
   // Handle file upload
   const handleFileUpload = useCallback(
@@ -654,10 +672,12 @@ export function useDashboard() {
     viewMode, setViewMode,
     isLoading, dragOver, setDragOver,
     copiedId, currentFolderId, setCurrentFolderId,
-    isRecentUploads, selectedFiles,
+    isRecentUploads, setIsRecentUploads,
+    isMyShares, setIsMyShares,
+    selectedFiles,
 
     // Data
-    files, folders, totalSize,
+    files, folders, shares, totalSize,
     gateways, customGateways,
 
     // Upload

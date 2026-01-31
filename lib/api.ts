@@ -265,6 +265,35 @@ export const api = {
     if (!data.success) throw new Error(data.error || "检查验证状态失败");
     return data.data?.failedFiles || [];
   },
+
+  async loadShares(): Promise<Array<{
+    cid: string;
+    filename?: string;
+    size?: number;
+    expiry?: string;
+    createdAt: number;
+    hasPassword: boolean;
+  }>> {
+    const response = await secureFetch(`${CONFIG.API_SHARE}?list=true`);
+    const data: ApiResponse<Array<{
+      cid: string;
+      filename?: string;
+      size?: number;
+      expiry?: string;
+      createdAt: number;
+      hasPassword: boolean;
+    }>> = await response.json();
+    if (!data.success) throw new Error(data.error || "加载分享列表失败");
+    return data.data || [];
+  },
+
+  async deleteShare(cid: string): Promise<void> {
+    const response = await secureFetch(`${CONFIG.API_SHARE}?cid=${cid}`, {
+      method: "DELETE",
+    });
+    const data: ApiResponse = await response.json();
+    if (!data.success) throw new Error(data.error || "删除分享失败");
+  },
 };
 
 export const uploadApi = {

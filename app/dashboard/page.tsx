@@ -42,11 +42,15 @@ export default function DashboardPage() {
     currentFolderId,
     setCurrentFolderId,
     isRecentUploads,
+    setIsRecentUploads,
+    isMyShares,
+    setIsMyShares,
     selectedFiles,
 
     // Data
     files,
     folders,
+    shares,
     totalSize,
     gateways,
     customGateways,
@@ -203,6 +207,18 @@ export default function DashboardPage() {
           logout();
           router.push("/");
         }}
+        onRecentUploadsClick={() => {
+          setIsRecentUploads(!isRecentUploads);
+          setIsMyShares(false);
+          setCurrentFolderId(null);
+        }}
+        isRecentUploadsActive={isRecentUploads}
+        onMySharesClick={() => {
+          setIsMyShares(!isMyShares);
+          setIsRecentUploads(false);
+          setCurrentFolderId(null);
+        }}
+        isMySharesActive={isMyShares}
       />
 
       {/* Main Content */}

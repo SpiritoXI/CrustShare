@@ -36,6 +36,8 @@ interface SidebarProps {
   onLogout: () => void;
   onRecentUploadsClick?: () => void;
   isRecentUploadsActive?: boolean;
+  onMySharesClick?: () => void;
+  isMySharesActive?: boolean;
 }
 
 export function Sidebar({
@@ -56,6 +58,8 @@ export function Sidebar({
   onLogout,
   onRecentUploadsClick,
   isRecentUploadsActive,
+  onMySharesClick,
+  isMySharesActive,
 }: SidebarProps) {
   return (
     <motion.aside
@@ -109,7 +113,11 @@ export function Sidebar({
             <Upload className="mr-2 h-4 w-4" />
             最近上传
           </Button>
-          <Button variant="ghost" className="w-full justify-start">
+          <Button
+            variant="ghost"
+            className={`w-full justify-start ${isMySharesActive ? "bg-white/30" : ""}`}
+            onClick={onMySharesClick}
+          >
             <Share2 className="mr-2 h-4 w-4" />
             我的分享
           </Button>

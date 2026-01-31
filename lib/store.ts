@@ -15,9 +15,19 @@ interface AuthState {
   recordFailedAttempt: () => void;
 }
 
+interface ShareInfo {
+  cid: string;
+  filename?: string;
+  size?: number;
+  expiry?: string;
+  createdAt: number;
+  hasPassword: boolean;
+}
+
 interface FileState {
   files: FileRecord[];
   folders: Folder[];
+  shares: ShareInfo[];
   selectedFolder: string | null;
   selectedFiles: string[];
   viewMode: ViewMode;
@@ -28,6 +38,7 @@ interface FileState {
   storageStats: StorageStats;
   setFiles: (files: FileRecord[] | ((prev: FileRecord[]) => FileRecord[])) => void;
   setFolders: (folders: Folder[] | ((prev: Folder[]) => Folder[])) => void;
+  setShares: (shares: ShareInfo[] | ((prev: ShareInfo[]) => ShareInfo[])) => void;
   addFile: (file: FileRecord) => void;
   updateFile: (id: string | number, updates: Partial<FileRecord>) => void;
   deleteFile: (id: string | number) => void;
@@ -167,6 +178,7 @@ export const useAuthStore = create<AuthState>()(
 export const useFileStore = create<FileState>()((set, get) => ({
   files: [],
   folders: [],
+  shares: [],
   selectedFolder: null,
   selectedFiles: [],
   viewMode: "list",
@@ -198,6 +210,17 @@ export const useFileStore = create<FileState>()((set, get) => ({
       set({ folders });
     }
     get().updateStorageStats();
+  },
+
+  setShares: (shares) => {
+    if (typeof shares === "function") {
+      set((state) => {
+        const newShares = shares(state.shares);
+        return { shares: newShares };
+      });
+    } else {
+      set({ shares });
+    }
   },
 
   addFile: (file) => {

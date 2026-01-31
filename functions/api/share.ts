@@ -70,7 +70,7 @@ async function verifyAuth(request: Request, env: Env): Promise<boolean> {
   return authHeader === env.ADMIN_PASSWORD;
 }
 
-// GET: 获取分享信息（公开访问，不需要认证）
+// GET: 获取分享信息或分享列表
 export async function onRequestGet(context: Context): Promise<Response> {
   const { request, env } = context;
 
@@ -80,7 +80,75 @@ export async function onRequestGet(context: Context): Promise<Response> {
 
   const url = new URL(request.url);
   const cid = url.searchParams.get("cid");
+  const list = url.searchParams.get("list");
 
+  // 获取所有分享列表（需要认证）
+  if (list === "true") {
+    // 验证认证
+    if (!(await verifyAuth(request, env))) {
+      return new Response(
+        JSON.stringify({ success: false, error: "未授权" } as ApiResponse),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    try {
+      const result = await upstashCommand<string[]>(
+        env.UPSTASH_URL,
+        env.UPSTASH_TOKEN,
+        ["HGETALL", SHARES_KEY]
+      );
+
+      const shares: ShareInfo[] = [];
+      if (Array.isArray(result)) {
+        for (let i = 0; i < result.length; i += 2) {
+          try {
+            const shareInfo: ShareInfo = JSON.parse(result[i + 1]);
+            // 检查是否过期
+            if (shareInfo.expiry && shareInfo.expiry !== "0") {
+              const expiryDays = parseInt(shareInfo.expiry);
+              const expiryTime = shareInfo.createdAt + expiryDays * 24 * 60 * 60 * 1000;
+              if (Date.now() > expiryTime) {
+                // 删除过期的分享
+                await upstashCommand(
+                  env.UPSTASH_URL,
+                  env.UPSTASH_TOKEN,
+                  ["HDEL", SHARES_KEY, shareInfo.cid]
+                );
+                continue;
+              }
+            }
+            shares.push({
+              cid: shareInfo.cid,
+              filename: shareInfo.filename,
+              size: shareInfo.size,
+              expiry: shareInfo.expiry,
+              createdAt: shareInfo.createdAt,
+              hasPassword: !!shareInfo.password,
+            });
+          } catch {
+            // skip invalid share
+          }
+        }
+      }
+
+      // 按创建时间排序（最新的在前）
+      shares.sort((a, b) => b.createdAt - a.createdAt);
+
+      return new Response(
+        JSON.stringify({ success: true, data: shares } as ApiResponse),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "获取分享列表失败";
+      return new Response(
+        JSON.stringify({ success: false, error: errorMessage } as ApiResponse),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+  }
+
+  // 获取单个分享信息（公开访问，不需要认证）
   if (!cid) {
     return new Response(
       JSON.stringify({ success: false, error: "缺少CID参数" } as ApiResponse),

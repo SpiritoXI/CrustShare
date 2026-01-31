@@ -91,7 +91,7 @@ export function FileList({
 
   if (viewMode === "list") {
     return (
-      <div className="rounded-xl glass overflow-hidden">
+      <div className="rounded-xl glass">
         <table className="w-full">
           <thead className="bg-white/50">
             <tr>
