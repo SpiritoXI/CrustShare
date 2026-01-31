@@ -138,7 +138,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
 
   if (!cid) {
     return new Response(
-      JSON.stringify({ error: "缺少CID参数" } as ApiResponse),
+      JSON.stringify({ success: false, error: "缺少CID参数" } as ApiResponse),
       { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
@@ -178,7 +178,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
           ["HDEL", SHARES_KEY, cid]
         );
         return new Response(
-          JSON.stringify({ error: "分享已过期" } as ApiResponse),
+          JSON.stringify({ success: false, error: "分享已过期" } as ApiResponse),
           { status: 410, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
@@ -201,7 +201,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "获取分享信息失败";
     return new Response(
-      JSON.stringify({ error: errorMessage } as ApiResponse),
+      JSON.stringify({ success: false, error: errorMessage } as ApiResponse),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
@@ -218,7 +218,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   // 验证认证
   if (!(await verifyAuth(request, env))) {
     return new Response(
-      JSON.stringify({ error: "未授权" } as ApiResponse),
+      JSON.stringify({ success: false, error: "未授权" } as ApiResponse),
       { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
@@ -228,7 +228,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
 
     if (!body.cid) {
       return new Response(
-        JSON.stringify({ error: "缺少CID" } as ApiResponse),
+        JSON.stringify({ success: false, error: "缺少CID" } as ApiResponse),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -255,7 +255,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "保存分享信息失败";
     return new Response(
-      JSON.stringify({ error: errorMessage } as ApiResponse),
+      JSON.stringify({ success: false, error: errorMessage } as ApiResponse),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
@@ -272,7 +272,7 @@ export async function onRequestDelete(context: Context): Promise<Response> {
   // 验证认证
   if (!(await verifyAuth(request, env))) {
     return new Response(
-      JSON.stringify({ error: "未授权" } as ApiResponse),
+      JSON.stringify({ success: false, error: "未授权" } as ApiResponse),
       { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
@@ -282,7 +282,7 @@ export async function onRequestDelete(context: Context): Promise<Response> {
 
   if (!cid) {
     return new Response(
-      JSON.stringify({ error: "缺少CID参数" } as ApiResponse),
+      JSON.stringify({ success: false, error: "缺少CID参数" } as ApiResponse),
       { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
@@ -301,7 +301,7 @@ export async function onRequestDelete(context: Context): Promise<Response> {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "删除分享失败";
     return new Response(
-      JSON.stringify({ error: errorMessage } as ApiResponse),
+      JSON.stringify({ success: false, error: errorMessage } as ApiResponse),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

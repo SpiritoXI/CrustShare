@@ -104,7 +104,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
 
   if (!(await verifyAuth(request, env))) {
     return new Response(
-      JSON.stringify({ error: "未授权" } as ApiResponse),
+      JSON.stringify({ success: false, error: "未授权" } as ApiResponse),
       { status: 401, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -195,14 +195,14 @@ export async function onRequestGet(context: Context): Promise<Response> {
 
       default:
         return new Response(
-          JSON.stringify({ error: "未知操作" } as ApiResponse),
+          JSON.stringify({ success: false, error: "未知操作" } as ApiResponse),
           { status: 400, headers: { "Content-Type": "application/json" } }
         );
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "操作失败";
     return new Response(
-      JSON.stringify({ error: errorMessage } as ApiResponse),
+      JSON.stringify({ success: false, error: errorMessage } as ApiResponse),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -237,7 +237,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
 
   if (!(await verifyAuth(request, env))) {
     return new Response(
-      JSON.stringify({ error: "未授权" } as ApiResponse),
+      JSON.stringify({ success: false, error: "未授权" } as ApiResponse),
       { status: 401, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -422,14 +422,14 @@ export async function onRequestPost(context: Context): Promise<Response> {
 
       default:
         return new Response(
-          JSON.stringify({ error: "未知操作" } as ApiResponse),
+          JSON.stringify({ success: false, error: "未知操作" } as ApiResponse),
           { status: 400, headers: { "Content-Type": "application/json" } }
         );
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "操作失败";
     return new Response(
-      JSON.stringify({ error: errorMessage } as ApiResponse),
+      JSON.stringify({ success: false, error: errorMessage } as ApiResponse),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

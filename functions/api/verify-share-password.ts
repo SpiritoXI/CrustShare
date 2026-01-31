@@ -80,7 +80,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
 
     if (!cid || !password) {
       return new Response(
-        JSON.stringify({ error: "缺少CID或密码" } as ApiResponse),
+        JSON.stringify({ success: false, error: "缺少CID或密码" } as ApiResponse),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -93,7 +93,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
 
     if (!result) {
       return new Response(
-        JSON.stringify({ error: "分享不存在" } as ApiResponse),
+        JSON.stringify({ success: false, error: "分享不存在" } as ApiResponse),
         { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -106,7 +106,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
       const expiryTime = shareInfo.createdAt + expiryDays * 24 * 60 * 60 * 1000;
       if (Date.now() > expiryTime) {
         return new Response(
-          JSON.stringify({ error: "分享已过期" } as ApiResponse),
+          JSON.stringify({ success: false, error: "分享已过期" } as ApiResponse),
           { status: 410, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
@@ -115,7 +115,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     // 验证密码
     if (shareInfo.password !== password) {
       return new Response(
-        JSON.stringify({ error: "密码错误" } as ApiResponse),
+        JSON.stringify({ success: false, error: "密码错误" } as ApiResponse),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -137,7 +137,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "验证密码失败";
     return new Response(
-      JSON.stringify({ error: errorMessage } as ApiResponse),
+      JSON.stringify({ success: false, error: errorMessage } as ApiResponse),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

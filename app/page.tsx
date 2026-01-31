@@ -83,7 +83,7 @@ export default function LoginPage() {
     <div
       className="flex min-h-screen items-center justify-center p-4 relative"
       style={{
-        backgroundImage: "url('/background.jpg')",
+        backgroundImage: "url('https://wp-cdn.4ce.cn/v2/O1FmUhC.jpeg')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",

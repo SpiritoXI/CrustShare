@@ -73,7 +73,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
 
   if (!(await verifyAuth(request, env))) {
     return new Response(
-      JSON.stringify({ error: "未授权" } as ApiResponse),
+      JSON.stringify({ success: false, error: "未授权" } as ApiResponse),
       { status: 401, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -81,7 +81,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
   const crustToken = env.CRUST_TOKEN;
   if (!crustToken) {
     return new Response(
-      JSON.stringify({ error: "CRUST_TOKEN未配置" } as ApiResponse),
+      JSON.stringify({ success: false, error: "CRUST_TOKEN未配置" } as ApiResponse),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
