@@ -47,6 +47,14 @@ async function verifyAuth(request: Request, env: Env): Promise<boolean> {
 export async function onRequestGet(context: Context): Promise<Response> {
   const { request, env } = context;
 
+  // 调试日志：检查环境变量
+  console.log('Environment check:', {
+    hasUpstashUrl: !!env.UPSTASH_URL,
+    hasUpstashToken: !!env.UPSTASH_TOKEN,
+    upstashUrlLength: env.UPSTASH_URL?.length,
+    upstashTokenLength: env.UPSTASH_TOKEN?.length,
+  });
+
   if (!(await verifyAuth(request, env))) {
     return new Response(
       JSON.stringify({ success: false, error: "未授权" } as ApiResponse),

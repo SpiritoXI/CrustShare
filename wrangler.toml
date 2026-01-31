@@ -1,5 +1,5 @@
 # Cloudflare Pages 部署配置
-# 文档: https://developers.cloudflare.com/pages/platform/headers/
+# 文档: https://developers.cloudflare.com/pages/platform/functions/
 
 name = "crustshare"
 compatibility_date = "2024-01-01"
@@ -9,13 +9,10 @@ compatibility_date = "2024-01-01"
 command = "pnpm run build"
 directory = "dist"
 
-# 环境变量（仅在本地开发时使用，生产环境请在 Dashboard 设置）
+# 环境变量（非敏感信息）
 [vars]
 NEXT_PUBLIC_APP_NAME = "CrustShare"
 
-# 密钥环境变量（敏感信息，请在 Cloudflare Dashboard 设置）
-# [[env.production.vars]]
-# UPSTASH_URL = ""
-# UPSTASH_TOKEN = ""
-# ADMIN_PASSWORD = ""
-# CRUST_TOKEN = ""
+# 生产环境变量绑定
+# 注意：敏感变量请在 Cloudflare Dashboard > Pages > 你的项目 > Settings > Environment variables 中设置
+# 或者在 wrangler secret 中设置

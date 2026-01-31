@@ -51,7 +51,7 @@ export const api = {
   async getToken(): Promise<string> {
     const response = await secureFetch(CONFIG.API_GET_TOKEN);
     const data = await response.json();
-    return data.token;
+    return data.data?.token || data.token;
   },
 
   async loadFiles(): Promise<FileRecord[]> {
