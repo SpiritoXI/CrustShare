@@ -100,6 +100,15 @@ export function useDashboard() {
         const savedAutoRefresh = localStorage.getItem("autoRefresh");
         if (savedAutoRefresh !== null) setAutoRefresh(savedAutoRefresh === "true");
 
+        // 从缓存加载网关列表
+        const cachedGateways = gatewayApi.getCachedResults();
+        if (cachedGateways && cachedGateways.length > 0) {
+          setGateways(cachedGateways);
+        } else {
+          // 如果没有缓存，使用默认网关
+          setGateways(CONFIG.DEFAULT_GATEWAYS);
+        }
+
         // 从服务器加载文件列表
         const loadedFiles = await api.loadFiles();
         setFiles(loadedFiles);
@@ -293,11 +302,18 @@ export function useDashboard() {
     setPreviewFile(null);
   }, []);
 
-  // Handle test gateways
+  // Handle test gateways - 打开模态框并执行检测
   const handleTestGateways = useCallback(async () => {
+    // 先打开模态框
+    setGatewayModalOpen(true);
+
+    // 如果已经在检测中，不重复执行
+    if (isTestingGateways) return;
+
     setIsTestingGateways(true);
     try {
-      const allGateways = [...gateways];
+      // 如果 gateways 为空，使用默认网关
+      const allGateways = gateways.length > 0 ? [...gateways] : [...CONFIG.DEFAULT_GATEWAYS];
       const results = await gatewayApi.testAllGateways(allGateways);
       setGateways(results);
       gatewayApi.cacheResults(results);
@@ -307,13 +323,14 @@ export function useDashboard() {
     } finally {
       setIsTestingGateways(false);
     }
-  }, [gateways, setGateways, showToast]);
+  }, [gateways, setGateways, showToast, isTestingGateways]);
 
   // Handle refresh gateways
   const handleRefreshGateways = useCallback(async () => {
     setIsTestingGateways(true);
     try {
-      const allGateways = [...gateways];
+      // 如果 gateways 为空，使用默认网关
+      const allGateways = gateways.length > 0 ? [...gateways] : [...CONFIG.DEFAULT_GATEWAYS];
       const results = await gatewayApi.testAllGateways(allGateways);
       setGateways(results);
       gatewayApi.cacheResults(results);
