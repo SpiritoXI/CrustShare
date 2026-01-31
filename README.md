@@ -83,17 +83,11 @@ cp .env.example .env.local
 UPSTASH_URL=https://your-url.upstash.io
 UPSTASH_TOKEN=your-token
 
-# 管理员密码（SHA256 哈希）
-ADMIN_PASSWORD_HASH=your-password-hash
+# 管理员密码（必需）
+ADMIN_PASSWORD=your-password
 
 # Crust Token
 CRUST_TOKEN=your-token
-```
-
-生成密码哈希：
-
-```bash
-node -e "console.log(require('crypto').createHash('sha256').update('your-password').digest('hex'))"
 ```
 
 ### 4. 启动开发服务器

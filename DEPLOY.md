@@ -129,37 +129,11 @@ pnpm install
 npm install
 ```
 
-### 3. 生成管理员密码哈希
+### 3. 设置管理员密码
 
-我们支持两种密码配置方式，推荐同时配置以提高兼容性：
+系统使用明文密码进行验证。
 
-#### 方式一：同时配置明文密码和哈希值（推荐）
-
-这种方式最灵活，系统会优先使用哈希值验证，同时保留明文密码作为后备。
-
-**生成 SHA-256 哈希：**
-
-```bash
-# 使用 Node.js 生成 SHA-256 哈希
-node -e "console.log(require('crypto').createHash('sha256').update('你的密码').digest('hex'))"
-
-# 示例：密码为 "admin123"
-node -e "console.log(require('crypto').createHash('sha256').update('admin123').digest('hex'))"
-# 输出：0192023a7bbd73250516f069df18b500...
-
-# 或使用 Python
-python -c "import hashlib; print(hashlib.sha256('admin123'.encode()).hexdigest())"
-```
-
-**保存好生成的哈希值**，稍后需要用到。
-
-#### 方式二：仅配置哈希值
-
-如果只配置 `ADMIN_PASSWORD_HASH`，系统会使用哈希验证。
-
-#### 方式三：仅配置明文密码
-
-如果只配置 `ADMIN_PASSWORD`，系统会使用明文验证（不推荐用于生产环境）。
+**注意：** 请设置一个强密码以确保安全。
 
 ### 4. 配置环境变量
 
@@ -178,17 +152,9 @@ UPSTASH_URL=https://your-url.upstash.io
 UPSTASH_TOKEN=your-upstash-token
 
 # ============================================
-# 管理员密码（推荐同时配置）
+# 管理员密码（必需）
 # ============================================
-# 方式一：同时配置（推荐）
-ADMIN_PASSWORD=your-plaintext-password
-ADMIN_PASSWORD_HASH=your-password-hash
-
-# 方式二：仅配置哈希值
-# ADMIN_PASSWORD_HASH=your-password-hash
-
-# 方式三：仅配置明文（不推荐用于生产环境）
-# ADMIN_PASSWORD=your-plaintext-password
+ADMIN_PASSWORD=your-password
 
 # ============================================
 # Crust Token（必需）
@@ -207,11 +173,6 @@ MAX_UPLOAD_SIZE=1073741824
 # 分享链接默认过期天数
 DEFAULT_SHARE_EXPIRY_DAYS=7
 ```
-
-**密码验证优先级：**
-1. 如果设置了 `ADMIN_PASSWORD_HASH`，优先使用哈希验证（最安全）
-2. 如果没有设置 `ADMIN_PASSWORD_HASH`，使用 `ADMIN_PASSWORD` 进行明文验证
-3. 建议同时设置两个变量，以确保最佳兼容性
 
 ### 5. 启动开发服务器
 
@@ -284,15 +245,9 @@ git push -u origin main
 NODE_VERSION = 20
 UPSTASH_URL = https://your-url.upstash.io
 UPSTASH_TOKEN = your-upstash-token
-ADMIN_PASSWORD = your-plaintext-password
-ADMIN_PASSWORD_HASH = your-password-hash
+ADMIN_PASSWORD = your-password
 CRUST_TOKEN = your-crust-token
 ```
-
-**密码配置说明：**
-- `ADMIN_PASSWORD`: 明文密码（用于 API 认证）
-- `ADMIN_PASSWORD_HASH`: SHA-256 哈希值（用于登录验证）
-- **推荐同时配置两者**，以确保最佳兼容性
 
 **重要：** 确保所有值都正确无误，错误的配置会导致部署失败。
 
@@ -364,24 +319,16 @@ wrangler secret put UPSTASH_URL
 wrangler secret put UPSTASH_TOKEN
 # 提示输入时粘贴: your-upstash-token
 
-# 设置管理员密码（明文，用于 API 认证）
+# 设置管理员密码
 wrangler secret put ADMIN_PASSWORD
-# 提示输入时粘贴: your-plaintext-password
-
-# 设置管理员密码哈希（SHA-256，用于登录验证）
-wrangler secret put ADMIN_PASSWORD_HASH
-# 提示输入时粘贴: your-password-hash
+# 提示输入时粘贴: your-password
 
 # 设置 Crust Token
 wrangler secret put CRUST_TOKEN
 # 提示输入时粘贴: your-crust-token
 ```
 
-**注意：**
-- Secrets 设置后不会显示在控制台，请妥善保管
-- 推荐同时设置 `ADMIN_PASSWORD` 和 `ADMIN_PASSWORD_HASH`
-- `ADMIN_PASSWORD_HASH` 是登录时使用的哈希值
-- `ADMIN_PASSWORD` 是 API 请求时使用的明文密码
+**注意：** Secrets 设置后不会显示在控制台，请妥善保管
 
 #### 步骤 5：部署
 
@@ -673,20 +620,9 @@ Error: Invalid password
 ```
 
 **排查：**
-1. 检查 `ADMIN_PASSWORD_HASH` 是否正确生成（使用 SHA-256）
-2. 检查 `ADMIN_PASSWORD` 是否与哈希前的明文密码一致
-3. 确保同时设置了 `ADMIN_PASSWORD` 和 `ADMIN_PASSWORD_HASH`
-4. 重新生成哈希并更新环境变量：
-   ```bash
-   # 生成哈希
-   node -e "console.log(require('crypto').createHash('sha256').update('你的密码').digest('hex'))"
-   ```
-5. 检查密码长度是否符合要求（至少 6 位）
-
-**密码验证流程：**
-1. 登录时：用户输入密码 → 前端计算 SHA-256 哈希 → 与 `ADMIN_PASSWORD_HASH` 比较
-2. API 请求时：使用 `ADMIN_PASSWORD` 明文进行认证
-3. 因此需要同时配置这两个环境变量
+1. 检查 `ADMIN_PASSWORD` 是否正确设置
+2. 确保环境变量值与登录时输入的密码一致
+3. 检查密码长度是否符合要求（至少 6 位）
 
 ### 性能问题
 

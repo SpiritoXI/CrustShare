@@ -1,7 +1,7 @@
 import type { ApiResponse } from "../../types";
 
 interface Env {
-  ADMIN_PASSWORD_HASH: string;
+  ADMIN_PASSWORD: string;
 }
 
 interface Context {
@@ -11,53 +11,6 @@ interface Context {
 
 interface VerifyPasswordBody {
   password: string;
-}
-
-/**
- * 使用 SHA-256 对密码进行哈希
- * @param password - 明文密码
- * @returns 哈希后的密码（十六进制字符串）
- */
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-/**
- * 验证密码 - 支持明文或哈希值
- * @param password - 用户输入的密码（可能是明文或哈希值）
- * @param hash - 存储的哈希值
- * @returns 是否匹配
- */
-async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  // 如果密码长度是 64（SHA-256 哈希值的长度），直接比较
-  if (password.length === 64) {
-    // 使用 timing-safe 比较
-    if (password.length !== hash.length) {
-      return false;
-    }
-    let result = 0;
-    for (let i = 0; i < password.length; i++) {
-      result |= password.charCodeAt(i) ^ hash.charCodeAt(i);
-    }
-    return result === 0;
-  }
-
-  // 否则，将密码进行哈希后再比较
-  const computedHash = await hashPassword(password);
-  if (computedHash.length !== hash.length) {
-    return false;
-  }
-
-  let result = 0;
-  for (let i = 0; i < computedHash.length; i++) {
-    result |= computedHash.charCodeAt(i) ^ hash.charCodeAt(i);
-  }
-  return result === 0;
 }
 
 // CORS 响应头
@@ -80,8 +33,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
   try {
     // 检查环境变量
     console.log('Environment check:', {
-      hasAdminPasswordHash: !!env.ADMIN_PASSWORD_HASH,
-      hashLength: env.ADMIN_PASSWORD_HASH?.length
+      hasAdminPassword: !!env.ADMIN_PASSWORD,
+      passwordLength: env.ADMIN_PASSWORD?.length
     });
 
     let body: VerifyPasswordBody;
@@ -95,12 +48,12 @@ export async function onRequestPost(context: Context): Promise<Response> {
       );
     }
     const { password } = body;
-    const expectedPasswordHash = env.ADMIN_PASSWORD_HASH;
+    const expectedPassword = env.ADMIN_PASSWORD;
 
-    if (!expectedPasswordHash) {
-      console.error('ADMIN_PASSWORD_HASH not set');
+    if (!expectedPassword) {
+      console.error('ADMIN_PASSWORD not set');
       return new Response(
-        JSON.stringify({ success: false, error: "服务器配置错误：未设置 ADMIN_PASSWORD_HASH" } as ApiResponse),
+        JSON.stringify({ success: false, error: "服务器配置错误：未设置 ADMIN_PASSWORD" } as ApiResponse),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -113,7 +66,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
       );
     }
 
-    // 密码长度验证（支持明文或哈希值）
+    // 密码长度验证
     if (password.length < 1 || password.length > 128) {
       return new Response(
         JSON.stringify({ success: false, error: "密码长度不合法" } as ApiResponse),
@@ -121,8 +74,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
       );
     }
 
-    // 验证密码
-    const isValid = await verifyPassword(password, expectedPasswordHash);
+    // 明文密码比较
+    const isValid = password === expectedPassword;
 
     if (isValid) {
       return new Response(

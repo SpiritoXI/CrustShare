@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthStore, useUIStore } from "@/lib/store";
-import { hashPassword } from "@/lib/utils";
+
 import { CONFIG } from "@/lib/config";
 
 export default function LoginPage() {
@@ -51,11 +51,10 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const hashedPassword = await hashPassword(password);
       const response = await fetch("/api/verify-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: hashedPassword }),
+        body: JSON.stringify({ password: password }),
       });
 
       if (response.ok) {
@@ -149,7 +148,7 @@ export default function LoginPage() {
             <div className="flex items-center justify-center space-x-4 text-xs text-muted-foreground">
               <div className="flex items-center space-x-1">
                 <Shield className="h-3 w-3" />
-                <span>SHA-256加密</span>
+                <span>密码保护</span>
               </div>
               <div className="flex items-center space-x-1">
                 <Lock className="h-3 w-3" />
