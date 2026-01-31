@@ -9,6 +9,7 @@ interface ShareInfo {
   password?: string;
   expiry?: string;
   createdAt: number;
+  hasPassword?: boolean;
 }
 
 // CORS 响应头
