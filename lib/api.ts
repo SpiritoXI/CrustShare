@@ -80,22 +80,25 @@ export const api = {
     return data.data!;
   },
 
-  async fetchCidInfo(cid: string): Promise<{ name: string; size: number } | null> {
+  async fetchCidInfo(cid: string): Promise<{ name: string; size: number; isDirectory: boolean } | null> {
     try {
       // 尝试从IPFS网关获取文件信息
       const gateways = [
         "https://ipfs.io",
         "https://gateway.ipfs.io",
         "https://cloudflare-ipfs.com",
+        "https://dweb.link",
+        "https://gateway.pinata.cloud",
       ];
 
+      // 首先尝试使用 /api/v0/ls 获取目录信息
       for (const gateway of gateways) {
         try {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-          // 尝试获取文件/目录信息
-          const response = await fetch(`${gateway}/api/v0/ls?arg=${cid}`, {
+          // 使用 ipfs.io 的公共 API 端点
+          const response = await fetch(`https://ipfs.io/api/v0/ls?arg=${cid}`, {
             method: "POST",
             signal: controller.signal,
           });
@@ -107,54 +110,110 @@ export const api = {
             if (data.Objects && data.Objects.length > 0) {
               const obj = data.Objects[0];
               if (obj.Links && obj.Links.length > 0) {
-                // 如果是目录，获取第一个文件的名称
-                const firstLink = obj.Links[0];
+                // 这是一个目录，计算总大小
+                let totalSize = 0;
+                obj.Links.forEach((link: { Size?: number }) => {
+                  totalSize += link.Size || 0;
+                });
+                // 如果是目录，使用 CID 前8位作为名称
                 return {
-                  name: firstLink.Name || `file-${cid.slice(0, 8)}`,
-                  size: firstLink.Size || 0,
-                };
-              } else {
-                // 如果是单个文件
-                return {
-                  name: `file-${cid.slice(0, 8)}`,
-                  size: Number(obj.Size) || 0,
+                  name: `folder-${cid.slice(0, 8)}`,
+                  size: totalSize,
+                  isDirectory: true,
                 };
               }
             }
           }
         } catch {
-          continue;
+          // 继续尝试下一个网关
         }
       }
 
-      // 如果API方法失败，尝试通过HEAD请求获取大小
+      // 尝试通过 HEAD 请求获取单个文件信息
       for (const gateway of gateways) {
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
 
           const response = await fetch(`${gateway}/ipfs/${cid}`, {
             method: "HEAD",
             signal: controller.signal,
+            redirect: "follow",
           });
 
           clearTimeout(timeoutId);
 
           if (response.ok) {
             const contentLength = response.headers.get("content-length");
+            const contentType = response.headers.get("content-type");
+            const contentDisposition = response.headers.get("content-disposition");
+
+            // 尝试从 Content-Disposition 获取文件名
+            let filename: string | null = null;
+            if (contentDisposition) {
+              const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+              if (match) {
+                filename = match[1].replace(/['"]/g, "");
+              }
+            }
+
+            // 如果没有从 header 获取到文件名，尝试从 URL 获取
+            if (!filename) {
+              const url = response.url;
+              const urlParts = url.split("/");
+              const lastPart = urlParts[urlParts.length - 1];
+              if (lastPart && lastPart !== cid && !lastPart.startsWith("Qm")) {
+                filename = decodeURIComponent(lastPart);
+              }
+            }
+
+            // 根据 content-type 推断扩展名
+            let extension = "";
+            if (contentType) {
+              const extMap: Record<string, string> = {
+                "image/jpeg": ".jpg",
+                "image/png": ".png",
+                "image/gif": ".gif",
+                "image/webp": ".webp",
+                "image/svg+xml": ".svg",
+                "application/pdf": ".pdf",
+                "text/plain": ".txt",
+                "text/markdown": ".md",
+                "application/json": ".json",
+                "video/mp4": ".mp4",
+                "video/webm": ".webm",
+                "audio/mpeg": ".mp3",
+                "audio/wav": ".wav",
+                "application/zip": ".zip",
+                "application/x-rar-compressed": ".rar",
+              };
+              extension = extMap[contentType] || "";
+            }
+
             return {
-              name: `file-${cid.slice(0, 8)}`,
+              name: filename || `file-${cid.slice(0, 8)}${extension}`,
               size: contentLength ? (parseInt(contentLength) || 0) : 0,
+              isDirectory: false,
             };
           }
         } catch {
-          continue;
+          // 继续尝试下一个网关
         }
       }
 
-      return null;
+      // 如果都失败了，返回基本信息
+      return {
+        name: `file-${cid.slice(0, 8)}`,
+        size: 0,
+        isDirectory: false,
+      };
     } catch {
-      return null;
+      // 发生错误时返回默认值
+      return {
+        name: `file-${cid.slice(0, 8)}`,
+        size: 0,
+        isDirectory: false,
+      };
     }
   },
 

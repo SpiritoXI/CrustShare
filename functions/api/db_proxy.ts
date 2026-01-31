@@ -184,6 +184,14 @@ interface CopyFilesBody {
   fileIds: (string | number)[];
   folderId: string;
 }
+interface RenameFolderBody {
+  folderId: string;
+  newName: string;
+}
+interface RenameFileBody {
+  fileId: string | number;
+  newName: string;
+}
 
 export async function onRequestPost(context: Context): Promise<Response> {
   const { request, env } = context;
@@ -205,7 +213,9 @@ export async function onRequestPost(context: Context): Promise<Response> {
       | CreateFolderBody
       | AddCidBody
       | MoveFilesBody
-      | CopyFilesBody;
+      | CopyFilesBody
+      | RenameFolderBody
+      | RenameFileBody;
 
     switch (action) {
       case "save_file": {
@@ -369,6 +379,86 @@ export async function onRequestPost(context: Context): Promise<Response> {
 
         return new Response(
           JSON.stringify({ success: true, data: { copied: copiedCount } } as ApiResponse<{ copied: number }>),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      case "rename_folder": {
+        const renameFolderBody = body as RenameFolderBody;
+        const folderData = await upstashCommand<string | null>(
+          env.UPSTASH_URL,
+          env.UPSTASH_TOKEN,
+          ["HGET", FOLDERS_KEY, renameFolderBody.folderId]
+        );
+
+        if (!folderData) {
+          return new Response(
+            JSON.stringify({ success: false, error: "文件夹不存在" } as ApiResponse),
+            { status: 404, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        const folder = JSON.parse(folderData) as Folder;
+        folder.name = renameFolderBody.newName;
+
+        await upstashCommand(
+          env.UPSTASH_URL,
+          env.UPSTASH_TOKEN,
+          ["HSET", FOLDERS_KEY, folder.id, JSON.stringify(folder)]
+        );
+
+        return new Response(
+          JSON.stringify({ success: true } as ApiResponse),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      case "rename_file": {
+        const renameFileBody = body as RenameFileBody;
+        const files = await upstashCommand<string[]>(
+          env.UPSTASH_URL,
+          env.UPSTASH_TOKEN,
+          ["LRANGE", FILES_KEY, "0", "-1"]
+        );
+
+        let renamed = false;
+        if (Array.isArray(files)) {
+          for (let i = 0; i < files.length; i++) {
+            try {
+              const file = JSON.parse(files[i]) as FileRecord;
+              if (file.id === renameFileBody.fileId) {
+                // 更新文件名
+                const updatedFile = { ...file, name: renameFileBody.newName };
+                // 删除旧记录
+                await upstashCommand(
+                  env.UPSTASH_URL,
+                  env.UPSTASH_TOKEN,
+                  ["LREM", FILES_KEY, 0, files[i]]
+                );
+                // 添加更新后的记录
+                await upstashCommand(
+                  env.UPSTASH_URL,
+                  env.UPSTASH_TOKEN,
+                  ["LPUSH", FILES_KEY, JSON.stringify(updatedFile)]
+                );
+                renamed = true;
+                break;
+              }
+            } catch {
+              // 跳过无效文件
+            }
+          }
+        }
+
+        if (!renamed) {
+          return new Response(
+            JSON.stringify({ success: false, error: "文件不存在" } as ApiResponse),
+            { status: 404, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true } as ApiResponse),
           { status: 200, headers: { "Content-Type": "application/json" } }
         );
       }
