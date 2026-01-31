@@ -347,6 +347,7 @@ export const useGatewayStore = create<GatewayState>()(
     {
       name: "crustshare-gateways",
       partialize: (state) => ({
+        gateways: state.gateways,
         customGateways: state.customGateways,
         hideUnavailable: state.hideUnavailable,
         lastTestTime: state.lastTestTime,
