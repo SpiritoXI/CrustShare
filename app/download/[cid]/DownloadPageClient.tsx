@@ -24,12 +24,29 @@ interface GatewayLink {
   latency?: number;
 }
 
+declare global {
+  interface Window {
+    __DOWNLOAD_CID__?: string;
+    __DOWNLOAD_FILENAME__?: string;
+    __DOWNLOAD_SIZE__?: string;
+  }
+}
+
 export default function DownloadPageClient() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const cid = params.cid as string;
-  const filename = searchParams.get("filename") || "";
-  const sizeParam = searchParams.get("size");
+  
+  // 优先从全局变量获取 CID（Cloudflare Function 注入），否则从 URL 参数获取
+  const urlCid = params.cid as string;
+  const globalCid = typeof window !== 'undefined' ? window.__DOWNLOAD_CID__ : undefined;
+  const cid = (globalCid && globalCid !== '[[cid]]' ? globalCid : urlCid) || '';
+  
+  // 优先从全局变量获取文件名和大小
+  const globalFilename = typeof window !== 'undefined' ? window.__DOWNLOAD_FILENAME__ : undefined;
+  const globalSize = typeof window !== 'undefined' ? window.__DOWNLOAD_SIZE__ : undefined;
+  
+  const filename = globalFilename || searchParams.get("filename") || "";
+  const sizeParam = globalSize || searchParams.get("size");
   const size = sizeParam ? parseInt(sizeParam, 10) : undefined;
 
   const [shareInfo, setShareInfo] = useState<ShareInfo>({ cid, filename, size });

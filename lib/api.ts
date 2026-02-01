@@ -1,4 +1,4 @@
-import { CONFIG } from "./config";
+import { API, CRUST, INTEGRITY_CHECK, CONFIG } from "./config";
 import type { FileRecord, Folder, ApiResponse, Gateway, SavedGateway } from "@/types";
 import { useAuthStore, useGatewayStore } from "./store";
 
@@ -49,20 +49,20 @@ async function secureFetch(url: string, options: RequestInit = {}): Promise<Resp
 
 export const api = {
   async getToken(): Promise<string> {
-    const response = await secureFetch(CONFIG.API_GET_TOKEN);
+    const response = await secureFetch(API.GET_TOKEN);
     const data = await response.json();
     return data.data?.token || data.token;
   },
 
   async loadFiles(): Promise<FileRecord[]> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=load_files`);
+    const response = await secureFetch(`${API.DB_PROXY}?action=load_files`);
     const data: ApiResponse<FileRecord[]> = await response.json();
     if (!data.success) throw new Error(data.error || "加载文件失败");
     return data.data || [];
   },
 
   async saveFile(file: FileRecord): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=save_file`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=save_file`, {
       method: "POST",
       body: JSON.stringify(file),
     });
@@ -71,7 +71,7 @@ export const api = {
   },
 
   async addCid(cid: string, name: string, size: number, folderId: string = "default"): Promise<FileRecord> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=add_cid`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=add_cid`, {
       method: "POST",
       body: JSON.stringify({ cid, name, size, folderId }),
     });
@@ -288,7 +288,7 @@ export const api = {
   },
 
   async deleteFile(fileId: string | number): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=delete_file`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=delete_file`, {
       method: "POST",
       body: JSON.stringify({ fileId }),
     });
@@ -297,7 +297,7 @@ export const api = {
   },
 
   async deleteFiles(fileIds: (string | number)[]): Promise<number> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=delete_files`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=delete_files`, {
       method: "POST",
       body: JSON.stringify({ fileIds }),
     });
@@ -307,7 +307,7 @@ export const api = {
   },
 
   async renameFile(fileId: string | number, newName: string): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=rename_file`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=rename_file`, {
       method: "POST",
       body: JSON.stringify({ fileId, newName }),
     });
@@ -316,7 +316,7 @@ export const api = {
   },
 
   async moveFiles(fileIds: (string | number)[], folderId: string): Promise<number> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=move_files`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=move_files`, {
       method: "POST",
       body: JSON.stringify({ fileIds, folderId }),
     });
@@ -326,7 +326,7 @@ export const api = {
   },
 
   async copyFiles(fileIds: (string | number)[], folderId: string): Promise<number> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=copy_files`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=copy_files`, {
       method: "POST",
       body: JSON.stringify({ fileIds, folderId }),
     });
@@ -336,14 +336,14 @@ export const api = {
   },
 
   async loadFolders(): Promise<Folder[]> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=load_folders`);
+    const response = await secureFetch(`${API.DB_PROXY}?action=load_folders`);
     const data: ApiResponse<Folder[]> = await response.json();
     if (!data.success) throw new Error(data.error || "加载文件夹失败");
     return data.data || [];
   },
 
   async createFolder(name: string, parentId: string | null = null): Promise<Folder> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=create_folder`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=create_folder`, {
       method: "POST",
       body: JSON.stringify({ name, parentId }),
     });
@@ -353,7 +353,7 @@ export const api = {
   },
 
   async renameFolder(folderId: string, newName: string): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=rename_folder`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=rename_folder`, {
       method: "POST",
       body: JSON.stringify({ folderId, newName }),
     });
@@ -362,7 +362,7 @@ export const api = {
   },
 
   async deleteFolder(folderId: string): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=delete_folder`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=delete_folder`, {
       method: "POST",
       body: JSON.stringify({ folderId }),
     });
@@ -374,7 +374,7 @@ export const api = {
     files: { count: number };
     folders: { count: number };
   }> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=db_stats`);
+    const response = await secureFetch(`${API.DB_PROXY}?action=db_stats`);
     const data: ApiResponse<{
       keys: {
         files: { count: number };
@@ -389,7 +389,7 @@ export const api = {
   },
 
   async checkVerificationStatus(): Promise<FileRecord[]> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=check_verification_status`);
+    const response = await secureFetch(`${API.DB_PROXY}?action=check_verification_status`);
     const data: ApiResponse<{ failedFiles: FileRecord[] }> = await response.json();
     if (!data.success) throw new Error(data.error || "检查验证状态失败");
     return data.data?.failedFiles || [];
@@ -403,7 +403,7 @@ export const api = {
     createdAt: number;
     hasPassword: boolean;
   }>> {
-    const response = await secureFetch(`${CONFIG.API_SHARE}?list=true`);
+    const response = await secureFetch(`${API.SHARE}?list=true`);
     const data: ApiResponse<Array<{
       cid: string;
       filename?: string;
@@ -417,7 +417,7 @@ export const api = {
   },
 
   async deleteShare(cid: string): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_SHARE}?cid=${cid}`, {
+    const response = await secureFetch(`${API.SHARE}?cid=${cid}`, {
       method: "DELETE",
     });
     const data: ApiResponse = await response.json();
@@ -436,9 +436,9 @@ export const uploadApi = {
     onProgress: (progress: number) => void,
     attempt: number = 0
   ): Promise<{ cid: string; size: number; hash?: string }> {
-    const uploadApis = CONFIG.CRUST_UPLOAD_APIS || [CONFIG.CRUST_UPLOAD_API];
-    const maxRetries = CONFIG.CRUST_UPLOAD_RETRY_ATTEMPTS || 3;
-    const retryDelay = CONFIG.CRUST_UPLOAD_RETRY_DELAY || 2000;
+    const uploadApis = CRUST.UPLOAD_APIS;
+    const maxRetries = CRUST.UPLOAD_RETRY_ATTEMPTS;
+    const retryDelay = CRUST.UPLOAD_RETRY_DELAY;
 
     // 选择当前尝试的 API
     const apiIndex = attempt % uploadApis.length;
@@ -489,7 +489,7 @@ export const uploadApi = {
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      const timeout = CONFIG.CRUST_UPLOAD_TIMEOUT || 5 * 60 * 1000;
+      const timeout = CRUST.UPLOAD_TIMEOUT;
 
       // 设置超时
       xhr.timeout = timeout;

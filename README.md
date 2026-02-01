@@ -1,25 +1,89 @@
 # CrustShare
 
-基于 Crust Network 和 IPFS 的去中心化文件存储与分享平台。
+<p align="center">
+  <img src="./public/icon-192x192.png" alt="CrustShare Logo" width="120">
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+<p align="center">
+  基于 Crust Network 和 IPFS 的去中心化文件存储与分享平台
+</p>
+
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
+  </a>
+  <a href="https://nextjs.org/">
+    <img src="https://img.shields.io/badge/Next.js-14-black" alt="Next.js">
+  </a>
+  <a href="https://www.typescriptlang.org/">
+    <img src="https://img.shields.io/badge/TypeScript-5.0-blue" alt="TypeScript">
+  </a>
+  <a href="https://tailwindcss.com/">
+    <img src="https://img.shields.io/badge/Tailwind-3-38B2AC" alt="Tailwind CSS">
+  </a>
+</p>
+
+---
+
+## 目录
+
+- [项目介绍](#项目介绍)
+- [核心特性](#核心特性)
+- [技术架构](#技术架构)
+- [快速开始](#快速开始)
+- [项目结构](#项目结构)
+- [配置说明](#配置说明)
+- [部署指南](#部署指南)
+- [开发文档](#开发文档)
+- [贡献指南](#贡献指南)
+- [许可证](#许可证)
+
+---
 
 ## 项目介绍
 
-CrustShare 是一个开源的去中心化文件存储和分享平台，利用 Crust Network 和 IPFS 技术，为用户提供安全、永久、无需服务器的文件存储解决方案。
+**CrustShare** 是一个开源的去中心化文件存储和分享平台，利用 [Crust Network](https://crust.network/) 和 [IPFS](https://ipfs.tech/) 技术，为用户提供安全、永久、无需服务器的文件存储解决方案。
 
-### 核心特性
+### 为什么选择 CrustShare？
 
-- **去中心化存储** - 基于 Crust Network 和 IPFS，数据分布式存储，永久保存
-- **多媒体支持** - 支持图片预览、视频/音频在线播放
-- **智能网关** - 自动测试多个 IPFS 网关，选择最优节点加速访问
-- **密码保护** - 分享链接可设置访问密码，保护隐私
-- **文件夹管理** - 支持创建文件夹，轻松组织文件
-- **批量操作** - 批量移动、复制、删除文件，提升效率
-- **CID 导入** - 支持导入已有 IPFS CID 到文件库
-- **响应式设计** - 完美适配桌面、平板、手机等各种设备
+- **永久存储** - 基于 IPFS 的内容寻址和 Crust Network 的激励机制，确保文件长期可用
+- **去中心化** - 无单点故障，数据分布式存储在全球节点
+- **隐私保护** - 端到端加密，支持密码保护分享链接
+- **开源免费** - 完全开源，可自托管，无平台锁定
+
+---
+
+## 核心特性
+
+### 文件管理
+- 📁 **文件夹管理** - 创建、重命名、删除文件夹，支持嵌套结构
+- 🔍 **智能搜索** - 快速搜索文件和文件夹
+- 📊 **批量操作** - 批量移动、复制、删除文件
+- 🏷️ **文件排序** - 按名称、大小、日期排序
+
+### 文件上传
+- 📤 **拖拽上传** - 支持拖拽文件到浏览器上传
+- 📈 **进度显示** - 实时显示上传进度
+- 🔒 **安全检查** - 文件名安全验证、类型检查
+- ⚡ **故障转移** - 多节点上传，自动切换可用节点
+
+### 文件预览
+- 🖼️ **图片预览** - 支持 JPG、PNG、GIF、WebP、SVG 等格式
+- 📄 **文件信息** - 显示 CID、大小、上传时间等元数据
+
+### 分享功能
+- 🔗 **链接分享** - 生成可分享的链接
+- 🔐 **密码保护** - 为分享链接设置访问密码
+- ⏰ **过期设置** - 设置分享链接的有效期
+- 🌐 **多网关** - 智能选择最优 IPFS 网关
+
+### 网关管理
+- 🚀 **智能检测** - 自动测试网关可用性和延迟
+- 🌍 **全球节点** - 支持 40+ 个 IPFS 公共网关
+- ⭐ **优质保存** - 自动保存连通性好的网关优先使用
+- 📊 **健康评分** - 基于延迟和成功率的健康度评估
+
+---
 
 ## 技术架构
 
@@ -27,288 +91,37 @@ CrustShare 是一个开源的去中心化文件存储和分享平台，利用 Cr
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
-| [Next.js](https://nextjs.org/) | 14 | React 全栈框架 |
+| [Next.js](https://nextjs.org/) | 14 | React 全栈框架，App Router |
 | [React](https://react.dev/) | 18 | UI 组件库 |
 | [TypeScript](https://www.typescriptlang.org/) | 5 | 类型安全 |
 | [Tailwind CSS](https://tailwindcss.com/) | 3 | 原子化 CSS |
-| [shadcn/ui](https://ui.shadcn.com/) | - | UI 组件库 |
+| [shadcn/ui](https://ui.shadcn.com/) | - | 基础 UI 组件 |
 | [Zustand](https://github.com/pmndrs/zustand) | 4 | 状态管理 |
-| [Framer Motion](https://www.framer.com/motion/) | 10 | 动画效果 |
+| [TanStack Query](https://tanstack.com/query) | 5 | 服务端状态管理 |
+| [Framer Motion](https://www.framer.com/motion/) | 11 | 动画效果 |
 
 ### 后端服务
 
 | 服务 | 用途 |
 |------|------|
-| [Upstash Redis](https://upstash.com/) | 数据持久化存储 |
+| [Upstash Redis](https://upstash.com/) | 数据持久化存储（文件元数据、分享配置） |
 | [Crust Network](https://crust.network/) | 去中心化文件存储 |
 | [IPFS](https://ipfs.tech/) | 分布式文件系统 |
 
 ### 部署平台
 
-- [Cloudflare Pages](https://pages.cloudflare.com/) - 推荐，全球 CDN 加速
-- [Vercel](https://vercel.com/) - 快速部署，自动预览
-- Docker - 自托管部署
+- **[Cloudflare Pages](https://pages.cloudflare.com/)** - 推荐，全球 CDN 加速 + 边缘函数
+- **[Vercel](https://vercel.com/)** - 快速部署，自动预览
+- **Docker** - 自托管部署
 
-## 目录结构
-
-```
-crustshare/
-├── app/                          # Next.js 应用目录
-│   ├── dashboard/               # 文件管理页面
-│   │   └── page.tsx             # 仪表板主页面
-│   ├── share/[cid]/             # 文件分享页面
-│   │   ├── page.tsx             # 分享页面入口
-│   │   └── SharePage.tsx        # 分享页面组件
-│   ├── layout.tsx               # 根布局
-│   ├── page.tsx                 # 登录页
-│   ├── providers.tsx            # 全局 Provider
-│   └── globals.css              # 全局样式
-├── components/                   # 组件目录
-│   ├── ui/                      # shadcn/ui 基础组件
-│   │   ├── button.tsx
-│   │   ├── card.tsx
-│   │   ├── checkbox.tsx
-│   │   ├── input.tsx
-│   │   ├── progress.tsx
-│   │   └── slider.tsx
-│   ├── dashboard/               # 仪表板组件
-│   │   ├── batch-toolbar.tsx    # 批量操作工具栏
-│   │   ├── dashboard-header.tsx # 仪表板头部
-│   │   ├── index.ts             # 统一导出
-│   │   ├── preview-modal.tsx    # 文件预览弹窗
-│   │   └── upload-progress.tsx  # 上传进度组件
-│   ├── share/                   # 分享页面组件
-│   │   ├── download-section.tsx # 下载区域
-│   │   ├── file-info-card.tsx   # 文件信息卡片
-│   │   ├── gateway-selector.tsx # 网关选择器
-│   │   ├── ipfs-info-card.tsx   # IPFS 信息卡片
-│   │   ├── password-gate.tsx    # 密码验证
-│   │   ├── share-footer.tsx     # 分享页脚
-│   │   └── share-header.tsx     # 分享头部
-│   ├── modals/                  # 模态框组件
-│   │   ├── add-cid-modal.tsx    # 添加 CID
-│   │   ├── add-gateway-modal.tsx# 添加网关
-│   │   ├── download-modal.tsx   # 下载选项
-│   │   ├── folder-modal.tsx     # 文件夹管理
-│   │   ├── gateway-modal.tsx    # 网关管理
-│   │   ├── move-modal.tsx       # 移动文件
-│   │   ├── rename-file-modal.tsx# 重命名文件
-│   │   ├── settings-modal.tsx   # 设置
-│   │   └── share-modal.tsx      # 分享配置
-│   ├── file-list.tsx            # 文件列表组件
-│   ├── image-viewer.tsx         # 图片查看器
-│   ├── media-player.tsx         # 媒体播放器
-│   ├── modal.tsx                # 通用模态框
-│   ├── sidebar.tsx              # 侧边栏
-│   └── toast.tsx                # 消息提示
-├── hooks/                        # 自定义 Hooks
-│   ├── index.ts                 # 统一导出
-│   ├── use-dashboard.ts         # 仪表板逻辑
-│   ├── use-file-operations.ts   # 文件操作
-│   ├── use-folder-operations.ts # 文件夹操作
-│   ├── use-gateway.ts           # 网关管理
-│   ├── use-share-page.ts        # 分享页逻辑
-│   └── use-upload.ts            # 文件上传
-├── lib/                          # 工具库
-│   ├── api.ts                   # API 服务
-│   ├── config.ts                # 配置常量
-│   ├── error-handler.ts         # 错误处理
-│   ├── security.ts              # 安全工具
-│   ├── store.ts                 # 状态管理
-│   └── utils.ts                 # 工具函数
-├── functions/api/                # Cloudflare Functions
-│   ├── db_proxy.ts              # 数据库代理
-│   ├── get_token.ts             # 获取上传令牌
-│   ├── share.ts                 # 分享接口
-│   ├── verify-password.ts       # 密码验证
-│   └── verify-share-password.ts # 分享密码验证
-├── types/                        # TypeScript 类型
-│   ├── env.d.ts                 # 环境变量类型
-│   └── index.ts                 # 类型定义
-├── public/                       # 静态资源
-│   └── icons/                   # 图标资源
-├── scripts/                      # 脚本工具
-│   ├── compress-image.js        # 图片压缩
-│   ├── generate-env.js          # 环境变量生成
-│   └── generate-icons.js        # 图标生成
-├── middleware.ts                 # 中间件
-├── next.config.js                # Next.js 配置
-├── package.json                  # 依赖配置
-├── tailwind.config.ts            # Tailwind 配置
-├── tsconfig.json                 # TypeScript 配置
-├── README.md                     # 项目说明
-├── DEPLOY.md                     # 部署文档
-└── LICENSE.md                    # 许可证
-```
-
-## 核心功能实现
-
-### 1. 文件上传
-
-文件上传通过 `use-upload.ts` Hook 实现，支持：
-
-- 拖拽上传
-- 进度显示
-- 文件大小限制（默认 1GB）
-- 文件类型验证
-- 文件名安全检查
-
-**关键接口：**
-
-```typescript
-// hooks/use-upload.ts
-export function useUpload() {
-  const uploadFile = async (
-    file: File,
-    onProgress: (progress: number) => void
-  ): Promise<{ cid: string; hash: string; size: number }>;
-}
-```
-
-### 2. 文件管理
-
-文件管理通过 `use-file-operations.ts` Hook 实现，支持：
-
-- 文件列表展示（列表/网格视图）
-- 文件搜索
-- 文件排序
-- 批量操作（移动、删除）
-- 文件重命名
-
-**关键接口：**
-
-```typescript
-// hooks/use-file-operations.ts
-export interface FileOperations {
-  files: FileRecord[];
-  selectedFiles: string[];
-  handleDelete: (fileId: string) => Promise<void>;
-  handleMove: (fileIds: string[], folderId: string) => Promise<void>;
-  handleRename: (fileId: string, newName: string) => Promise<void>;
-  toggleSelection: (fileId: string) => void;
-  selectAll: () => void;
-  clearSelection: () => void;
-}
-```
-
-### 3. 文件夹管理
-
-文件夹管理通过 `use-folder-operations.ts` Hook 实现，支持：
-
-- 创建文件夹
-- 重命名文件夹
-- 删除文件夹
-- 文件夹树形导航
-
-**关键接口：**
-
-```typescript
-// hooks/use-folder-operations.ts
-export interface FolderOperations {
-  folders: Folder[];
-  currentFolderId: string | null;
-  createFolder: (name: string, parentId?: string) => Promise<void>;
-  renameFolder: (folderId: string, newName: string) => Promise<void>;
-  deleteFolder: (folderId: string) => Promise<void>;
-  setCurrentFolder: (folderId: string | null) => void;
-}
-```
-
-### 4. 网关管理
-
-网关管理通过 `use-gateway.ts` Hook 实现，支持：
-
-- 自动测试网关可用性
-- 延迟检测
-- 智能选择最优网关
-- 自定义网关添加
-
-**关键接口：**
-
-```typescript
-// hooks/use-gateway.ts
-export interface GatewayOperations {
-  gateways: Gateway[];
-  testGateways: () => Promise<void>;
-  getBestGateway: () => Gateway | null;
-  addCustomGateway: (gateway: Gateway) => void;
-  removeCustomGateway: (name: string) => void;
-}
-```
-
-### 5. 文件分享
-
-文件分享通过 `use-share-page.ts` Hook 实现，支持：
-
-- 生成分享链接
-- 密码保护
-- 过期时间设置
-- 多网关下载
-
-**关键接口：**
-
-```typescript
-// hooks/use-share-page.ts
-export function useSharePage(cid: string) {
-  shareInfo: ShareInfo | null;
-  gateways: Gateway[];
-  selectedGateway: Gateway | null;
-  handleDownload: () => void;
-  handleVerifyPassword: (password: string) => Promise<boolean>;
-  testGateways: () => Promise<void>;
-}
-```
-
-### 6. API 服务
-
-API 服务封装在 `lib/api.ts` 中，提供：
-
-```typescript
-// lib/api.ts
-export const api = {
-  getToken: () => Promise<string>;
-  loadFiles: () => Promise<FileRecord[]>;
-  saveFile: (file: FileRecord) => Promise<void>;
-  deleteFile: (fileId: string) => Promise<void>;
-  renameFile: (fileId: string, newName: string) => Promise<void>;
-  moveFiles: (fileIds: string[], folderId: string) => Promise<void>;
-  loadFolders: () => Promise<Folder[]>;
-  createFolder: (folder: Folder) => Promise<void>;
-  deleteFolder: (folderId: string) => Promise<void>;
-  validateCid: (cid: string) => { valid: boolean; error?: string };
-  fetchCidInfo: (cid: string) => Promise<CidInfo | null>;
-};
-
-export const uploadApi = {
-  uploadToCrust: (
-    file: File,
-    token: string,
-    onProgress: (progress: number) => void
-  ) => Promise<{ cid: string; hash: string; size: number }>;
-  verifyFile: (cid: string) => Promise<VerifyResult>;
-};
-
-export const gatewayApi = {
-  testGateway: (url: string) => Promise<TestResult>;
-  testAllGateways: (gateways: Gateway[]) => Promise<Gateway[]>;
-  fetchPublicGateways: () => Promise<Gateway[]>;
-  getCachedResults: () => Gateway[] | null;
-  cacheResults: (gateways: Gateway[]) => void;
-};
-
-export const shareApi = {
-  createShare: (config: ShareConfig) => Promise<ShareInfo>;
-  getShareInfo: (cid: string) => Promise<ShareInfo | null>;
-  verifyPassword: (cid: string, password: string) => Promise<ShareInfo | null>;
-};
-```
+---
 
 ## 快速开始
 
 ### 环境要求
 
-- Node.js 20.x 或更高版本
-- pnpm（推荐）或 npm
+- **Node.js** >= 20.x
+- **pnpm** >= 8.x（推荐）或 npm >= 10.x
 
 ### 1. 克隆项目
 
@@ -321,7 +134,6 @@ cd crustshare
 
 ```bash
 pnpm install
-# 或 npm install
 ```
 
 ### 3. 配置环境变量
@@ -330,17 +142,17 @@ pnpm install
 cp .env.example .env.local
 ```
 
-编辑 `.env.local`：
+编辑 `.env.local`，填入以下必需配置：
 
 ```env
-# Upstash Redis
+# Upstash Redis（必需）
 UPSTASH_URL=https://your-url.upstash.io
 UPSTASH_TOKEN=your-token
 
-# 管理员密码（SHA256 哈希）
+# 管理员密码 SHA256 哈希（必需）
 ADMIN_PASSWORD_HASH=your-hash
 
-# Crust Token
+# Crust Token（必需）
 CRUST_TOKEN=your-token
 ```
 
@@ -354,18 +166,83 @@ node -e "console.log(require('crypto').createHash('sha256').update('your-passwor
 
 ```bash
 pnpm dev
-# 或 npm run dev
 ```
 
 访问 http://localhost:3000
+
+---
+
+## 项目结构
+
+```
+crustshare/
+├── app/                          # Next.js App Router
+│   ├── dashboard/               # 文件管理页面
+│   ├── share/[cid]/             # 文件分享页面
+│   ├── download/[cid]/          # 文件下载页面
+│   ├── layout.tsx               # 根布局
+│   ├── page.tsx                 # 登录页
+│   └── providers.tsx            # 全局 Provider
+├── components/                   # React 组件
+│   ├── ui/                      # shadcn/ui 基础组件
+│   ├── dashboard/               # 仪表板组件
+│   ├── share/                   # 分享页面组件
+│   └── modals/                  # 模态框组件
+├── hooks/                        # 自定义 React Hooks
+│   ├── use-upload.ts            # 文件上传
+│   ├── use-file-operations.ts   # 文件操作
+│   ├── use-folder-operations.ts # 文件夹操作
+│   ├── use-gateway.ts           # 网关管理
+│   └── use-share-page.ts        # 分享页面
+├── lib/                          # 工具库
+│   ├── api.ts                   # API 服务
+│   ├── config.ts                # 配置常量
+│   ├── store.ts                 # Zustand 状态管理
+│   ├── security.ts              # 安全工具
+│   ├── utils.ts                 # 通用工具函数
+│   ├── file-utils.ts            # 文件相关工具
+│   ├── cid-utils.ts             # CID 处理工具
+│   └── password-utils.ts        # 密码处理工具
+├── types/                        # TypeScript 类型定义
+│   └── index.ts
+├── functions/api/                # Cloudflare Functions
+├── scripts/                      # 脚本工具
+├── public/                       # 静态资源
+├── middleware.ts                 # Next.js 中间件
+├── next.config.js                # Next.js 配置
+└── package.json
+```
+
+---
+
+## 配置说明
+
+### 必需环境变量
+
+| 变量名 | 说明 | 获取方式 |
+|--------|------|----------|
+| `UPSTASH_URL` | Upstash Redis URL | [Upstash 控制台](https://console.upstash.com/) |
+| `UPSTASH_TOKEN` | Upstash REST API Token | [Upstash 控制台](https://console.upstash.com/) |
+| `ADMIN_PASSWORD_HASH` | 管理员密码 SHA256 哈希 | `node -e "console.log(require('crypto').createHash('sha256').update('密码').digest('hex'))"` |
+| `CRUST_TOKEN` | Crust Network API Token | [Crust Cloud](https://crustcloud.io/) |
+
+### 可选环境变量
+
+| 变量名 | 默认值 | 说明 |
+|--------|--------|------|
+| `DEFAULT_PAGE_SIZE` | 20 | 每页显示文件数 |
+| `MAX_UPLOAD_SIZE` | 1073741824 (1GB) | 上传文件大小限制（字节） |
+| `DEFAULT_SHARE_EXPIRY_DAYS` | 7 | 分享链接默认过期天数 |
+
+---
 
 ## 部署指南
 
 详细部署文档请查看 [DEPLOY.md](./DEPLOY.md)
 
-### 快速部署到 Cloudflare Pages
+### Cloudflare Pages 快速部署
 
-1. Fork 本仓库到您的 GitHub 账号
+1. Fork 本仓库到 GitHub
 2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com)
 3. 进入 **Pages** → **Create a project**
 4. 连接 GitHub 仓库
@@ -376,6 +253,78 @@ pnpm dev
 6. 添加环境变量
 7. 点击 **Save and Deploy**
 
+---
+
+## 开发文档
+
+### 代码规范
+
+- 使用 **TypeScript** 严格模式
+- 组件使用函数式组件 + Hooks
+- 状态管理使用 **Zustand**
+- 样式使用 **Tailwind CSS**
+- 图标使用 **Lucide React**
+
+### 目录组织原则
+
+```
+├── 组件按功能分组（dashboard/、share/、modals/）
+├── Hooks 按业务逻辑拆分
+├── lib/ 按功能模块化（api、config、utils、security）
+├── 类型定义集中在 types/
+├── API 路由在 functions/api/
+```
+
+### 命名规范
+
+- 组件：PascalCase（如 `FileList.tsx`）
+- Hooks：camelCase 前缀 use（如 `useUpload.ts`）
+- 工具函数：camelCase（如 `formatFileSize.ts`）
+- 常量：UPPER_SNAKE_CASE（如 `API_ENDPOINTS`）
+- 类型：PascalCase 后缀 Type（如 `FileRecord`）
+
+### 提交规范
+
+```
+feat: 新功能
+fix: 修复问题
+docs: 文档更新
+style: 代码格式（不影响功能）
+refactor: 重构（既不是新功能也不是修复）
+perf: 性能优化
+test: 测试相关
+chore: 构建过程或辅助工具的变动
+```
+
+---
+
+## 贡献指南
+
+欢迎提交 Issue 和 Pull Request！
+
+1. Fork 本仓库
+2. 创建特性分支：`git checkout -b feature/amazing-feature`
+3. 提交更改：`git commit -m 'feat: add amazing feature'`
+4. 推送分支：`git push origin feature/amazing-feature`
+5. 创建 Pull Request
+
+---
+
 ## 许可证
 
 [MIT License](./LICENSE.md)
+
+---
+
+## 致谢
+
+- [Crust Network](https://crust.network/) - 去中心化存储网络
+- [IPFS](https://ipfs.tech/) - 星际文件系统
+- [Upstash](https://upstash.com/) - Serverless Redis
+- [shadcn/ui](https://ui.shadcn.com/) - 精美的 UI 组件
+
+---
+
+<p align="center">
+  Made with ❤️ by CrustShare Team
+</p>
