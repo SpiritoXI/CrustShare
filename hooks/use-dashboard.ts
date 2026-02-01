@@ -694,7 +694,9 @@ export function useDashboard() {
 
     setIsDetectingCid(true);
     try {
-      const metadata = await api.fetchCidInfo(cid);
+      // 传入用户配置的所有网关进行检测，提高检测成功率
+      const allGateways = gateways.length > 0 ? gateways : CONFIG.DEFAULT_GATEWAYS;
+      const metadata = await api.fetchCidInfo(cid, allGateways);
       const metadataWithCid: typeof detectedCidInfo = metadata 
         ? { ...metadata, cid }
         : { cid, name: "", size: 0, isDirectory: false, valid: false, error: "无法获取文件信息" };
@@ -727,7 +729,7 @@ export function useDashboard() {
     } finally {
       setIsDetectingCid(false);
     }
-  }, [newCidName, newCidSize, showToast]);
+  }, [newCidName, newCidSize, showToast, gateways]);
 
   // Handle add CID
   const handleAddCid = useCallback(async () => {
@@ -748,7 +750,9 @@ export function useDashboard() {
       if (!metadata || metadata.cid !== newCid.trim()) {
         setIsDetectingCid(true);
         try {
-          const fetchedMetadata = await api.fetchCidInfo(newCid);
+          // 传入用户配置的所有网关进行检测，提高检测成功率
+          const allGateways = gateways.length > 0 ? gateways : CONFIG.DEFAULT_GATEWAYS;
+          const fetchedMetadata = await api.fetchCidInfo(newCid, allGateways);
           if (fetchedMetadata) {
             metadata = { ...fetchedMetadata, cid: newCid.trim() };
             setDetectedCidInfo(metadata);

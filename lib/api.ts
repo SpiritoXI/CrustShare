@@ -105,7 +105,7 @@ export const api = {
     return { valid: false, error: "无效的CID格式" };
   },
 
-  async fetchCidInfo(cid: string): Promise<{ name: string; size: number; isDirectory: boolean; valid: boolean; error?: string } | null> {
+  async fetchCidInfo(cid: string, customGateways?: Gateway[]): Promise<{ name: string; size: number; isDirectory: boolean; valid: boolean; error?: string } | null> {
     try {
       // 首先验证CID格式
       const validation = this.validateCid(cid);
@@ -119,14 +119,41 @@ export const api = {
         };
       }
 
-      // 尝试从IPFS网关获取文件信息
-      const gateways = [
+      // 构建网关列表：优先使用用户配置的网关，然后使用默认网关
+      const defaultGateways = [
         "https://ipfs.io",
         "https://gateway.ipfs.io",
         "https://cloudflare-ipfs.com",
         "https://dweb.link",
         "https://gateway.pinata.cloud",
+        "https://cf-ipfs.com",
+        "https://4everland.io",
+        "https://gateway.lighthouse.storage",
+        "https://w3s.link",
+        "https://nftstorage.link",
+        "https://cdn.ipfsscan.io",
+        "https://ipfs.web3.storage",
       ];
+
+      // 合并用户自定义网关和默认网关
+      const gateways: string[] = [];
+      
+      // 添加用户自定义网关（如果有）
+      if (customGateways && customGateways.length > 0) {
+        customGateways.forEach(g => {
+          const baseUrl = g.url.replace('/ipfs/', '');
+          if (!gateways.includes(baseUrl)) {
+            gateways.push(baseUrl);
+          }
+        });
+      }
+      
+      // 添加默认网关
+      defaultGateways.forEach(g => {
+        if (!gateways.includes(g)) {
+          gateways.push(g);
+        }
+      });
 
       // 首先尝试使用 /api/v0/ls 获取目录信息
       for (const gateway of gateways) {
