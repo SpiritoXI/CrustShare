@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { uploadApi, api, gatewayApi } from "@/lib/api";
 import { CONFIG } from "@/lib/config";
 import { useFileStore, useGatewayStore, useUIStore } from "@/lib/store";
@@ -74,8 +74,14 @@ export function useDashboard() {
   const [previewFile, setPreviewFile] = useState<FileRecord | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  // 使用 ref 来防止重复加载
+  const dataLoadedRef = useRef(false);
+
   // Load data and settings from localStorage and server
   useEffect(() => {
+    // 如果数据已经加载过，不再重复加载
+    if (dataLoadedRef.current) return;
+
     const loadData = async () => {
       setIsLoading(true);
       try {
@@ -108,6 +114,9 @@ export function useDashboard() {
         // 从服务器加载文件夹列表
         const loadedFolders = await api.loadFolders();
         setFolders(loadedFolders);
+
+        // 标记数据已加载
+        dataLoadedRef.current = true;
       } catch (error) {
         showToast("加载数据失败", "error");
         console.error("Failed to load data:", error);
@@ -117,7 +126,7 @@ export function useDashboard() {
     };
 
     loadData();
-  }, [setFiles, setFolders, showToast]);
+  }, []);
 
   // Handle file upload
   const handleFileUpload = useCallback(
