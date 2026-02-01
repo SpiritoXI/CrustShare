@@ -145,30 +145,44 @@ export function useDashboard() {
 
       if (shouldTestGateways) {
         // 创建新的 AbortController
-        gatewayTestAbortControllerRef.current = new AbortController();
+        const abortController = new AbortController();
+        gatewayTestAbortControllerRef.current = abortController;
 
         setIsTestingGateways(true);
-        try {
-          const allGateways = CONFIG.DEFAULT_GATEWAYS;
-          const results = await gatewayApi.testAllGateways(allGateways, {
-            signal: gatewayTestAbortControllerRef.current.signal,
-          });
+        
+        // 使用 Promise 确保 finally 块一定会执行
+        gatewayApi.testAllGateways(CONFIG.DEFAULT_GATEWAYS, {
+          signal: abortController.signal,
+        })
+        .then(results => {
           setGateways(results);
           gatewayApi.cacheResults(results);
           const availableCount = results.filter(g => g.available).length;
           showToast(`网关检测完成，${availableCount} 个可用`, "success");
-        } catch (error) {
+        })
+        .catch(error => {
           if (error instanceof Error && error.name !== 'AbortError') {
             console.error("自动网关检测失败", error);
           }
-        } finally {
+        })
+        .finally(() => {
           setIsTestingGateways(false);
-          gatewayTestAbortControllerRef.current = null;
-        }
+          if (gatewayTestAbortControllerRef.current === abortController) {
+            gatewayTestAbortControllerRef.current = null;
+          }
+        });
       }
     };
 
     loadData();
+    
+    // 清理函数，组件卸载时取消检测
+    return () => {
+      if (gatewayTestAbortControllerRef.current) {
+        gatewayTestAbortControllerRef.current.abort();
+        gatewayTestAbortControllerRef.current = null;
+      }
+    };
   }, []);
 
   // Handle file upload

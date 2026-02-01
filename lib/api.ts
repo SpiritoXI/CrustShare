@@ -795,6 +795,10 @@ export const gatewayApi = {
     while (queue.length > 0 || executing.size > 0) {
       // 检查是否已取消
       if (signal?.aborted) {
+        // 等待所有正在执行的任务完成
+        if (executing.size > 0) {
+          await Promise.all(executing);
+        }
         break;
       }
 
@@ -1537,6 +1541,7 @@ export const propagationApi = {
   /**
    * 传播文件到多个网关
    * 通过向每个网关发送 HEAD 请求来预热/传播文件
+   * 传播所有记录的网关，不仅限于已联通的网关
    */
   async propagateToGateways(
     cid: string,
@@ -1553,9 +1558,8 @@ export const propagationApi = {
   }> {
     const { maxConcurrent = 5, timeout = 15000, onProgress } = options;
     
-    // 过滤出可用的网关
-    const availableGateways = gateways.filter(g => g.available);
-    if (availableGateways.length === 0) {
+    // 传播所有记录的网关，不仅限于已联通的网关
+    if (gateways.length === 0) {
       return { success: [], failed: [], total: 0 };
     }
 
@@ -1563,7 +1567,7 @@ export const propagationApi = {
     const failed: Gateway[] = [];
 
     // 使用队列控制并发
-    const queue = [...availableGateways];
+    const queue = [...gateways];
     const executing: Set<Promise<void>> = new Set();
 
     const propagateToGateway = async (gateway: Gateway): Promise<void> => {
@@ -1616,12 +1620,13 @@ export const propagationApi = {
     return {
       success,
       failed,
-      total: availableGateways.length,
+      total: gateways.length,
     };
   },
 
   /**
    * 智能传播 - 优先传播到延迟低的网关
+   * 传播所有记录的网关，不仅限于已联通的网关
    */
   async smartPropagate(
     cid: string,
@@ -1638,9 +1643,8 @@ export const propagationApi = {
   }> {
     const { maxGateways = 8, timeout = 15000, onProgress } = options;
     
-    // 按延迟排序，优先传播到延迟低的网关
+    // 按延迟排序（优先传播延迟低的），但传播所有记录的网关
     const sortedGateways = gateways
-      .filter(g => g.available)
       .sort((a, b) => (a.latency || Infinity) - (b.latency || Infinity))
       .slice(0, maxGateways);
 
