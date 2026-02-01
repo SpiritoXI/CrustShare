@@ -11,6 +11,7 @@ import {
   Plus,
   Edit3,
   Trash2,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -28,6 +29,7 @@ interface SidebarProps {
   onUploadClick: () => void;
   onAddCidClick: () => void;
   onTestGateways: () => void;
+  onCancelGatewayTest?: () => void;
   onFolderSelect: (folderId: string | null) => void;
   onCreateFolder: () => void;
   onEditFolder: (folder: FolderType) => void;
@@ -46,6 +48,7 @@ export function Sidebar({
   onUploadClick,
   onAddCidClick,
   onTestGateways,
+  onCancelGatewayTest,
   onFolderSelect,
   onCreateFolder,
   onEditFolder,
@@ -96,15 +99,28 @@ export function Sidebar({
             <Folder className="mr-2 h-4 w-4" />
             全部文件
           </Button>
-          <Button
-            variant="ghost"
-            className="w-full justify-start"
-            onClick={onTestGateways}
-            disabled={isTestingGateways}
-          >
-            <Globe className="mr-2 h-4 w-4" />
-            {isTestingGateways ? "检测中..." : "网关检测"}
-          </Button>
+          <div className="flex items-center space-x-1">
+            <Button
+              variant="ghost"
+              className="flex-1 justify-start"
+              onClick={onTestGateways}
+              disabled={isTestingGateways}
+            >
+              <Globe className="mr-2 h-4 w-4" />
+              {isTestingGateways ? "检测中..." : "网关检测"}
+            </Button>
+            {isTestingGateways && onCancelGatewayTest && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-red-500 hover:text-red-600 hover:bg-red-50"
+                onClick={onCancelGatewayTest}
+                title="取消检测"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </nav>
 
         {/* Folders Section */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Globe, RefreshCw, Plus, ExternalLink, Trash2, Zap, Download } from "lucide-react";
+import { Globe, RefreshCw, Plus, ExternalLink, Trash2, Zap, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/modal";
 import type { Gateway } from "@/types";
@@ -19,6 +19,7 @@ interface GatewayModalProps {
   onRemove: (name: string) => void;
   onUpdate: (gateways: Gateway[]) => void;
   onFetchPublic: () => void;
+  onCancelTest?: () => void;
 }
 
 export function GatewayModal({
@@ -34,6 +35,7 @@ export function GatewayModal({
   onRemove,
   onUpdate,
   onFetchPublic,
+  onCancelTest,
 }: GatewayModalProps) {
   const title = (
     <div>
@@ -59,10 +61,17 @@ export function GatewayModal({
           <Plus className="h-4 w-4 mr-1" />
           添加网关
         </Button>
-        <Button variant="outline" size="sm" onClick={onRefresh} disabled={isTesting}>
-          <RefreshCw className={`h-4 w-4 mr-1 ${isTesting ? "animate-spin" : ""}`} />
-          重新检测
-        </Button>
+        {isTesting && onCancelTest ? (
+          <Button variant="outline" size="sm" onClick={onCancelTest} className="text-red-500 hover:text-red-600 hover:bg-red-50">
+            <X className="h-4 w-4 mr-1" />
+            取消检测
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" onClick={onRefresh} disabled={isTesting}>
+            <RefreshCw className={`h-4 w-4 mr-1 ${isTesting ? "animate-spin" : ""}`} />
+            重新检测
+          </Button>
+        )}
       </div>
 
       {isTesting && gateways.length === 0 ? (

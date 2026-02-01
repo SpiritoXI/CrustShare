@@ -47,6 +47,9 @@ export function useDashboard() {
   const [gatewayModalOpen, setGatewayModalOpen] = useState(false);
   const [isTestingGateways, setIsTestingGateways] = useState(false);
   const [isFetchingPublicGateways, setIsFetchingPublicGateways] = useState(false);
+
+  // AbortController for gateway testing
+  const gatewayTestAbortControllerRef = useRef<AbortController | null>(null);
   const [folderModalOpen, setFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
@@ -134,18 +137,26 @@ export function useDashboard() {
           Date.now() - cachedGateways[0].lastChecked > 5 * 60 * 1000);
 
       if (shouldTestGateways) {
+        // 创建新的 AbortController
+        gatewayTestAbortControllerRef.current = new AbortController();
+
         setIsTestingGateways(true);
         try {
           const allGateways = CONFIG.DEFAULT_GATEWAYS;
-          const results = await gatewayApi.testAllGateways(allGateways);
+          const results = await gatewayApi.testAllGateways(allGateways, {
+            signal: gatewayTestAbortControllerRef.current.signal,
+          });
           setGateways(results);
           gatewayApi.cacheResults(results);
           const availableCount = results.filter(g => g.available).length;
           showToast(`网关检测完成，${availableCount} 个可用`, "success");
-        } catch {
-          console.error("自动网关检测失败");
+        } catch (error) {
+          if (error instanceof Error && error.name !== 'AbortError') {
+            console.error("自动网关检测失败", error);
+          }
         } finally {
           setIsTestingGateways(false);
+          gatewayTestAbortControllerRef.current = null;
         }
       }
     };
@@ -341,34 +352,63 @@ export function useDashboard() {
     // 如果已经在检测中，不重复执行
     if (isTestingGateways) return;
 
+    // 创建新的 AbortController
+    gatewayTestAbortControllerRef.current = new AbortController();
+
     setIsTestingGateways(true);
     try {
       // 如果 gateways 为空，使用默认网关
       const allGateways = gateways.length > 0 ? [...gateways] : [...CONFIG.DEFAULT_GATEWAYS];
-      const results = await gatewayApi.testAllGateways(allGateways);
+      const results = await gatewayApi.testAllGateways(allGateways, {
+        signal: gatewayTestAbortControllerRef.current.signal,
+      });
       setGateways(results);
       gatewayApi.cacheResults(results);
       showToast("网关测试完成", "success");
-    } catch {
-      showToast("测试网关失败", "error");
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        showToast("网关检测已取消", "info");
+      } else {
+        showToast("测试网关失败", "error");
+      }
     } finally {
       setIsTestingGateways(false);
+      gatewayTestAbortControllerRef.current = null;
     }
   }, [gateways, setGateways, showToast, isTestingGateways]);
 
+  // Handle cancel gateway test
+  const handleCancelGatewayTest = useCallback(() => {
+    if (gatewayTestAbortControllerRef.current) {
+      gatewayTestAbortControllerRef.current.abort();
+      gatewayTestAbortControllerRef.current = null;
+    }
+  }, []);
+
   // Handle refresh gateways
   const handleRefreshGateways = useCallback(async () => {
+    // 创建新的 AbortController
+    gatewayTestAbortControllerRef.current = new AbortController();
+
     setIsTestingGateways(true);
     try {
       // 如果 gateways 为空，使用默认网关
       const allGateways = gateways.length > 0 ? [...gateways] : [...CONFIG.DEFAULT_GATEWAYS];
-      const results = await gatewayApi.testAllGateways(allGateways);
+      const results = await gatewayApi.testAllGateways(allGateways, {
+        signal: gatewayTestAbortControllerRef.current.signal,
+      });
       setGateways(results);
       gatewayApi.cacheResults(results);
-    } catch {
-      showToast("刷新网关失败", "error");
+      showToast("网关刷新完成", "success");
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        showToast("网关检测已取消", "info");
+      } else {
+        showToast("刷新网关失败", "error");
+      }
     } finally {
       setIsTestingGateways(false);
+      gatewayTestAbortControllerRef.current = null;
     }
   }, [gateways, setGateways, showToast]);
 
@@ -846,6 +886,7 @@ export function useDashboard() {
     handlePreview,
     handleClosePreview,
     handleTestGateways,
+    handleCancelGatewayTest,
     handleRefreshGateways,
     handleFetchPublicGateways,
     handleTestSingleGateway,

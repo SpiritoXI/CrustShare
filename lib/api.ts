@@ -542,6 +542,7 @@ export const gatewayApi = {
       retries?: number;
       samples?: number;
       testCid?: string;
+      signal?: AbortSignal;
     } = {}
   ): Promise<{
     available: boolean;
@@ -550,7 +551,7 @@ export const gatewayApi = {
     corsEnabled: boolean;
     rangeSupport: boolean;
   }> {
-    const { retries = 2, samples = 3, testCid = CONFIG.TEST_CID } = options;
+    const { retries = 2, samples = 3, testCid = CONFIG.TEST_CID, signal } = options;
     const testUrl = `${gateway.url}${testCid}`;
 
     const latencies: number[] = [];
@@ -560,11 +561,21 @@ export const gatewayApi = {
 
     // 多次采样测试
     for (let sample = 0; sample < samples; sample++) {
+      // 检查是否已取消
+      if (signal?.aborted) {
+        break;
+      }
+
       let sampleLatency = Infinity;
       let sampleSuccess = false;
 
       // 每次采样支持重试
       for (let attempt = 0; attempt <= retries; attempt++) {
+        // 检查是否已取消
+        if (signal?.aborted) {
+          break;
+        }
+
         if (attempt > 0) {
           await new Promise((r) => setTimeout(r, CONFIG.GATEWAY_TEST.RETRY_DELAY));
         }
@@ -575,6 +586,12 @@ export const gatewayApi = {
             () => controller.abort(),
             CONFIG.GATEWAY_TEST.TIMEOUT
           );
+
+          // 如果外部 signal 被取消，也取消内部请求
+          const abortHandler = () => {
+            controller.abort();
+          };
+          signal?.addEventListener('abort', abortHandler);
 
           const startTime = performance.now();
 
@@ -587,6 +604,7 @@ export const gatewayApi = {
             },
           });
 
+          signal?.removeEventListener('abort', abortHandler);
           const latency = Math.round(performance.now() - startTime);
           clearTimeout(timeoutId);
 
@@ -644,14 +662,26 @@ export const gatewayApi = {
     };
   },
 
+  // 当前正在进行的网关检测 AbortController
+  private currentTestAbortController: AbortController | null = null;
+
+  // 取消当前网关检测
+  cancelGatewayTest(): void {
+    if (this.currentTestAbortController) {
+      this.currentTestAbortController.abort();
+      this.currentTestAbortController = null;
+    }
+  }
+
   async testAllGateways(
     gateways: Gateway[],
     options: {
       onProgress?: (gateway: Gateway, result: Gateway) => void;
       priorityRegions?: string[];
+      signal?: AbortSignal;
     } = {}
   ): Promise<Gateway[]> {
-    const { onProgress, priorityRegions = ["CN", "INTL"] } = options;
+    const { onProgress, priorityRegions = ["CN", "INTL"], signal } = options;
     const results: Gateway[] = [];
     const maxConcurrency = CONFIG.GATEWAY_TEST.CONCURRENT_LIMIT;
 
@@ -670,13 +700,24 @@ export const gatewayApi = {
     const executing: Set<Promise<void>> = new Set();
 
     const processGateway = async (gateway: Gateway): Promise<void> => {
+      // 检查是否已取消
+      if (signal?.aborted) {
+        return;
+      }
+
       // 根据网关历史表现调整测试参数
       const testOptions: Parameters<typeof this.testGateway>[1] = {
         retries: gateway.consecutiveFailures && gateway.consecutiveFailures > 2 ? 1 : 2,
         samples: gateway.healthScore && gateway.healthScore < 50 ? 2 : 3,
+        signal,
       };
 
       const result = await this.testGateway(gateway, testOptions);
+
+      // 检查是否已取消
+      if (signal?.aborted) {
+        return;
+      }
 
       // 计算健康度评分
       const healthScore = this.calculateHealthScore(gateway, result);
@@ -703,6 +744,11 @@ export const gatewayApi = {
 
     // 持续处理直到队列为空且所有任务完成
     while (queue.length > 0 || executing.size > 0) {
+      // 检查是否已取消
+      if (signal?.aborted) {
+        break;
+      }
+
       // 启动新任务直到达到并发上限或队列为空
       while (executing.size < maxConcurrency && queue.length > 0) {
         const gateway = queue.shift()!;
