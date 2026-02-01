@@ -76,7 +76,7 @@ export function Sidebar({
         <div className="mb-6 rounded-xl bg-white/50 p-4">
           <div className="mb-2 text-sm font-medium text-muted-foreground">存储空间</div>
           <div className="mb-2 text-2xl font-bold">{formatFileSize(totalSize)}</div>
-          <Progress value={Math.min((totalSize / (1024 * 1024 * 1024)) * 100, 100)} className="h-2" />
+          <Progress value={Math.min((Math.max(0, Number(totalSize) || 0) / (1024 * 1024 * 1024)) * 100, 100)} className="h-2" />
           <div className="mt-2 text-xs text-muted-foreground">
             {filesCount} 个文件 · {foldersCount} 个文件夹
           </div>

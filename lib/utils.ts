@@ -6,11 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 B";
+  // 处理非数字、NaN、负数等异常情况
+  const numBytes = Number(bytes);
+  if (!isFinite(numBytes) || numBytes <= 0) return "0 B";
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  const i = Math.floor(Math.log(numBytes) / Math.log(k));
+  const index = Math.min(i, sizes.length - 1);
+  return parseFloat((numBytes / Math.pow(k, index)).toFixed(2)) + " " + sizes[index];
 }
 
 export function formatDate(dateString: string): string {

@@ -160,9 +160,14 @@ export default function DashboardPage() {
     const matchesSearch =
       file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       file.cid.toLowerCase().includes(searchQuery.toLowerCase());
+    // 修改文件夹筛选逻辑：
+    // - 如果选择了特定文件夹，只显示该文件夹中的文件
+    // - 如果在"全部文件"视图（currentFolderId === null 且不是最近上传），显示所有文件
     const matchesFolder = currentFolderId
       ? file.folder_id === currentFolderId
-      : !file.folder_id || file.folder_id === "default";
+      : isRecentUploads
+        ? !file.folder_id || file.folder_id === "default"
+        : true; // 全部文件视图：显示所有文件，不限于特定文件夹
     const isRecent = isRecentUploads
       ? file.uploadedAt && Date.now() - file.uploadedAt < 7 * 24 * 60 * 60 * 1000
       : true;

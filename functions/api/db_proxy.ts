@@ -77,7 +77,13 @@ export async function onRequestGet(context: Context): Promise<Response> {
           ? result
               .map((item) => {
                 try {
-                  return item ? (JSON.parse(item) as FileRecord) : null;
+                  if (!item) return null;
+                  const parsed = JSON.parse(item) as FileRecord;
+                  // 规范化数据：确保 size 是数字类型
+                  if (parsed.size !== undefined) {
+                    parsed.size = Number(parsed.size) || 0;
+                  }
+                  return parsed;
                 } catch {
                   return null;
                 }

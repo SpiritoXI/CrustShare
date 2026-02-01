@@ -22,8 +22,8 @@ export function useDashboard() {
     setShares, // 从 store 获取 setShares
   } = useFileStore();
 
-  // Calculate total size
-  const totalSize = files.reduce((acc, file) => acc + (file.size || 0), 0);
+  // Calculate total size - 确保 size 是数字类型
+  const totalSize = files.reduce((acc, file) => acc + (Number(file.size) || 0), 0);
 
   // Gateway Store
   const {
@@ -694,9 +694,12 @@ export function useDashboard() {
       const matchesSearch =
         file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         file.cid.toLowerCase().includes(searchQuery.toLowerCase());
+      // 修改文件夹筛选逻辑：与 page.tsx 保持一致
       const matchesFolder = currentFolderId
         ? file.folder_id === currentFolderId
-        : !file.folder_id || file.folder_id === "default";
+        : isRecentUploads
+          ? !file.folder_id || file.folder_id === "default"
+          : true; // 全部文件视图：显示所有文件
       const isRecent = isRecentUploads
         ? file.uploadedAt && Date.now() - file.uploadedAt < 7 * 24 * 60 * 60 * 1000
         : true;
