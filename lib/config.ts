@@ -46,6 +46,7 @@ export const PUBLIC_GATEWAY_SOURCES = [
  * 默认网关列表
  */
 export const DEFAULT_GATEWAYS: Gateway[] = [
+  // 中国区域 - 优先
   { name: 'Cloudflare-CN', url: 'https://cf-ipfs.com/ipfs/', icon: '⚡', priority: 1, region: 'CN' },
   { name: 'IPFSScan-CN', url: 'https://cdn.ipfsscan.io/ipfs/', icon: '🚀', priority: 2, region: 'CN' },
   { name: '4EVERLAND-CN', url: 'https://4everland.io/ipfs/', icon: '🍀', priority: 3, region: 'CN' },
@@ -55,10 +56,39 @@ export const DEFAULT_GATEWAYS: Gateway[] = [
   { name: 'Cloudflare-IPFS', url: 'https://cloudflare-ipfs.com/ipfs/', icon: '⚡', priority: 7, region: 'CN' },
   { name: 'W3S Link-CN', url: 'https://w3s.link/ipfs/', icon: '💾', priority: 8, region: 'CN' },
   { name: 'Web3-CN', url: 'https://ipfs.web3.storage/ipfs/', icon: '🌐', priority: 9, region: 'CN' },
-  { name: 'Pinata', url: 'https://gateway.pinata.cloud/ipfs/', icon: '🪅', priority: 10, region: 'INTL' },
-  { name: 'NFT Storage', url: 'https://nftstorage.link/ipfs/', icon: '🖼️', priority: 11, region: 'INTL' },
-  { name: 'Infura', url: 'https://ipfs.infura.io/ipfs/', icon: '🔮', priority: 12, region: 'INTL' },
-  { name: 'Crust', url: 'https://crustwebsites.net/ipfs/', icon: '🔸', priority: 13, region: 'INTL' },
+  { name: 'Flk-IPFS', url: 'https://flk-ipfs.xyz/ipfs/', icon: '🔥', priority: 10, region: 'CN' },
+  { name: 'IPFS Cross', url: 'https://ipfs.crossbell.io/ipfs/', icon: '✝️', priority: 11, region: 'CN' },
+  { name: 'Conflux', url: 'https://ipfs.confluxnetwork.org/ipfs/', icon: '🔷', priority: 12, region: 'CN' },
+  { name: 'C4', url: 'https://c4rex.co/ipfs/', icon: '🎯', priority: 13, region: 'CN' },
+  { name: 'IPFS ETH', url: 'https://ipfs.eth.aragon.network/ipfs/', icon: '⬡', priority: 14, region: 'CN' },
+  { name: 'Hardbin', url: 'https://hardbin.com/ipfs/', icon: '📦', priority: 15, region: 'CN' },
+  { name: 'DWorld', url: 'https://ipfs.dweb.link/ipfs/', icon: '🌍', priority: 16, region: 'CN' },
+  { name: 'Fleek', url: 'https://ipfs.fleek.co/ipfs/', icon: '⚙️', priority: 17, region: 'CN' },
+  { name: 'Sola', url: 'https://ipfs.sola.day/ipfs/', icon: '☀️', priority: 18, region: 'CN' },
+  { name: 'JPU', url: 'https://ipfs.jpu.jp/ipfs/', icon: '🇯🇵', priority: 19, region: 'CN' },
+  { name: 'Crust-IPFS', url: 'https://ipfs.crust.network/ipfs/', icon: '🦀', priority: 20, region: 'CN' },
+
+  // 国际区域
+  { name: 'Pinata', url: 'https://gateway.pinata.cloud/ipfs/', icon: '🪅', priority: 21, region: 'INTL' },
+  { name: 'NFT Storage', url: 'https://nftstorage.link/ipfs/', icon: '🖼️', priority: 22, region: 'INTL' },
+  { name: 'Infura', url: 'https://ipfs.infura.io/ipfs/', icon: '🔮', priority: 23, region: 'INTL' },
+  { name: 'Crust', url: 'https://crustwebsites.net/ipfs/', icon: '🔸', priority: 24, region: 'INTL' },
+  { name: 'Filebase', url: 'https://ipfs.filebase.io/ipfs/', icon: '📁', priority: 25, region: 'INTL' },
+  { name: 'Alchemy', url: 'https://ipfs.alchemy.com/ipfs/', icon: '✨', priority: 26, region: 'INTL' },
+  { name: 'QuickNode', url: 'https://ipfs.quicknode.com/ipfs/', icon: '⚡', priority: 27, region: 'INTL' },
+  { name: 'Ankr', url: 'https://ipfs.ankr.com/ipfs/', icon: '🔗', priority: 28, region: 'INTL' },
+  { name: 'Kleros', url: 'https://ipfs.kleros.io/ipfs/', icon: '⚖️', priority: 29, region: 'INTL' },
+  { name: 'Snapshot', url: 'https://snapshot.mypinata.cloud/ipfs/', icon: '📸', priority: 30, region: 'INTL' },
+  { name: 'Fleek-INTL', url: 'https://storage.fleek.co/ipfs/', icon: '☁️', priority: 31, region: 'INTL' },
+  { name: 'Textile', url: 'https://hub.textile.io/ipfs/', icon: '🧵', priority: 32, region: 'INTL' },
+  { name: 'Temporal', url: 'https://temporal.cloud/ipfs/', icon: '⏰', priority: 33, region: 'INTL' },
+  { name: 'Eternum', url: 'https://ipfs.eternum.io/ipfs/', icon: '♾️', priority: 34, region: 'INTL' },
+  { name: 'Seren', url: 'https://ipfs.seren.net/ipfs/', icon: '🌙', priority: 35, region: 'INTL' },
+  { name: 'Permaweb', url: 'https://ipfs.permaweb.io/ipfs/', icon: '🕸️', priority: 36, region: 'INTL' },
+  { name: 'Peergos', url: 'https://ipfs.peergos.me/ipfs/', icon: '🔒', priority: 37, region: 'INTL' },
+  { name: 'NftStorage-INTL', url: 'https://nftstorage.link/ipfs/', icon: '🎨', priority: 38, region: 'INTL' },
+  { name: 'Chainsafe', url: 'https://ipfs.chainsafe.io/ipfs/', icon: '⛓️', priority: 39, region: 'INTL' },
+  { name: 'Estuary', url: 'https://api.estuary.tech/gw/ipfs/', icon: '🌊', priority: 40, region: 'INTL' },
 ];
 
 /**
