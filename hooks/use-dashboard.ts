@@ -890,17 +890,18 @@ export function useDashboard() {
   const handlePropagateFile = useCallback(async (file: FileRecord) => {
     if (propagatingFiles.has(String(file.id))) return;
 
-    const availableGateways = gateways.filter(g => g.available);
-    if (availableGateways.length === 0) {
-      showToast("没有可用的网关", "error");
+    // 使用所有网关进行传播，不仅限于当前可用的网关
+    const allGateways = gateways.length > 0 ? gateways : CONFIG.DEFAULT_GATEWAYS;
+    if (allGateways.length === 0) {
+      showToast("没有可传播的网关", "error");
       return;
     }
 
     setPropagatingFiles(prev => new Set(prev).add(String(file.id)));
-    showToast(`开始传播文件到 ${availableGateways.length} 个网关...`, "info");
+    showToast(`开始传播文件到 ${allGateways.length} 个网关...`, "info");
 
     try {
-      const result = await propagationApi.smartPropagate(file.cid, availableGateways, {
+      const result = await propagationApi.smartPropagate(file.cid, allGateways, {
         maxGateways: 10,
         timeout: 20000,
         onProgress: (gateway, status) => {
