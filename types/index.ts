@@ -21,7 +21,7 @@ export interface FileVersion {
 /**
  * 文件验证状态
  */
-export type VerifyStatus = 'pending' | 'verifying' | 'ok' | 'failed';
+export type VerifyStatus = 'pending' | 'verifying' | 'ok' | 'failed' | 'unrepairable';
 
 /**
  * 文件记录
@@ -37,6 +37,7 @@ export interface FileRecord {
   verified?: boolean;
   verify_status?: VerifyStatus;
   verify_message?: string;
+  repair_suggestions?: string[]; // 修复建议
   uploadedAt?: number;
   tags?: string[];
   version?: number;

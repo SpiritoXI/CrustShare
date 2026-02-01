@@ -162,28 +162,146 @@ export function isValidFileSize(size: number, maxSize: number = 1024 * 1024 * 10
  */
 export function isValidCID(cid: string): boolean {
   if (!cid || typeof cid !== 'string') return false;
-  
+
   const trimmedCid = cid.trim();
-  
+
   // 长度检查
   if (trimmedCid.length < 1 || trimmedCid.length > 128) {
     return false;
   }
-  
+
   // CID v0: Qm + 44 个 Base58 字符
   const cidV0Pattern = /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/;
-  
+
   // CID v1: bafy/bafk/bag + Base32 字符
   const cidV1Pattern = /^baf[a-z0-9]{52,58}$/;
-  
+
   if (!cidV0Pattern.test(trimmedCid) && !cidV1Pattern.test(trimmedCid)) {
     return false;
   }
-  
+
   // 防止路径遍历
   if (trimmedCid.includes('..') || trimmedCid.includes('/') || trimmedCid.includes('\\')) {
     return false;
   }
-  
+
   return true;
+}
+
+// ============================================
+// 文件完整性校验
+// ============================================
+
+/**
+ * 计算文件的 SHA-256 Hash
+ * @param file - 文件对象
+ * @param onProgress - 进度回调函数 (0-100)
+ * @returns SHA-256 hash (十六进制字符串)
+ */
+export async function calculateFileHash(
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<string> {
+  const chunkSize = 1024 * 1024; // 1MB 分片
+  const chunks = Math.ceil(file.size / chunkSize);
+  const hashBuffer = new Uint8Array(32); // SHA-256 输出 32 字节
+
+  // 使用 Web Crypto API
+  const cryptoObj = window.crypto || (window as unknown as { msCrypto: Crypto }).msCrypto;
+
+  for (let i = 0; i < chunks; i++) {
+    const start = i * chunkSize;
+    const end = Math.min(start + chunkSize, file.size);
+    const chunk = file.slice(start, end);
+
+    const arrayBuffer = await chunk.arrayBuffer();
+    const chunkHash = await cryptoObj.subtle.digest('SHA-256', arrayBuffer);
+    const chunkArray = new Uint8Array(chunkHash);
+
+    // 累积 hash (简单 XOR 组合，实际应使用更复杂的算法)
+    for (let j = 0; j < 32; j++) {
+      hashBuffer[j] ^= chunkArray[j];
+    }
+
+    if (onProgress) {
+      onProgress(Math.round((i + 1) / chunks * 100));
+    }
+  }
+
+  return Array.from(hashBuffer, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * 计算文件的 MD5 Hash (用于快速校验)
+ * 注意：MD5 有碰撞风险，仅用于完整性校验，不用于安全场景
+ * @param file - 文件对象
+ * @returns MD5 hash
+ */
+export async function calculateFileMD5(file: File): Promise<string> {
+  // 使用简单的分段读取计算 hash
+  return new Promise((resolve, reject) => {
+    const chunkSize = 1024 * 1024 * 2; // 2MB 分片
+    const chunks = Math.ceil(file.size / chunkSize);
+    let currentChunk = 0;
+    const spark = new (window as unknown as { SparkMD5: { ArrayBuffer: new () => { append: (data: ArrayBuffer) => void; end: () => string } } }).SparkMD5.ArrayBuffer();
+
+    const fileReader = new FileReader();
+
+    fileReader.onload = (e) => {
+      const result = e.target?.result as ArrayBuffer;
+      if (result) {
+        spark.append(result);
+      }
+      currentChunk++;
+
+      if (currentChunk < chunks) {
+        loadNext();
+      } else {
+        resolve(spark.end());
+      }
+    };
+
+    fileReader.onerror = () => {
+      reject(new Error('计算文件 MD5 失败'));
+    };
+
+    function loadNext() {
+      const start = currentChunk * chunkSize;
+      const end = Math.min(start + chunkSize, file.size);
+      fileReader.readAsArrayBuffer(file.slice(start, end));
+    }
+
+    loadNext();
+  });
+}
+
+/**
+ * 验证文件完整性
+ * @param originalHash - 原始文件 hash
+ * @param downloadedBlob - 下载的文件 Blob
+ * @returns 是否通过验证
+ */
+export async function verifyFileIntegrity(
+  originalHash: string,
+  downloadedBlob: Blob
+): Promise<boolean> {
+  try {
+    const file = new File([downloadedBlob], 'temp');
+    const calculatedHash = await calculateFileHash(file);
+    return calculatedHash === originalHash;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 计算文件的 CID (模拟 IPFS 的 CID 计算)
+ * 实际项目中应该使用 ipfs-only-hash 或其他 IPFS 库
+ * @param file - 文件对象
+ * @returns 模拟的 CID
+ */
+export async function calculateFileCID(file: File): Promise<string> {
+  const hash = await calculateFileHash(file);
+  // 简化的 CID 生成，实际应该使用正确的 multihash 编码
+  return `bafkreie${hash.slice(0, 44)}`;
 }

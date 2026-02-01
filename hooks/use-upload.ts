@@ -10,7 +10,8 @@ import { api, uploadApi, propagationApi } from "@/lib/api";
 import { CONFIG } from "@/lib/config";
 import { useFileStore, useUIStore, useGatewayStore } from "@/lib/store";
 import { generateId } from "@/lib/utils";
-import { isAllowedFileType, isSafeFilename, sanitizeFilename } from "@/lib/security";
+import { isAllowedFileType, isSafeFilename, sanitizeFilename, calculateFileHash } from "@/lib/security";
+import { getAutoRepairService } from "@/lib/auto-repair";
 import { handleError } from "@/lib/error-handler";
 import type { FileRecord } from "@/types";
 
@@ -102,13 +103,26 @@ export function useUpload(options: UseUploadOptions): UploadState & UploadOperat
           setUploadProgress(0);
 
           try {
-            const result = await uploadApi.uploadToCrust(file, token, (progress) => {
-              setUploadProgress(progress);
+            // 步骤 1: 上传前计算文件 Hash
+            showToast(`正在计算文件 ${file.name} 的校验值...`, "info");
+            const localHash = await calculateFileHash(file, (hashProgress) => {
+              setUploadProgress(Math.round(hashProgress * 0.2)); // Hash 计算占 20% 进度
             });
 
-            // 使用安全的文件名
+            // 步骤 2: 上传文件到 Crust
+            const result = await uploadApi.uploadToCrust(file, token, (progress) => {
+              setUploadProgress(20 + Math.round(progress * 0.6)); // 上传占 60% 进度
+            });
+
+            // 步骤 3: 验证上传结果
+            if (!result.cid || !result.hash) {
+              throw new Error("上传响应缺少必要信息");
+            }
+
+            // 步骤 4: 使用安全的文件名
             const safeName = sanitizeFilename(file.name);
 
+            // 步骤 5: 创建文件记录（包含本地计算的 hash）
             const fileRecord: FileRecord = {
               id: generateId(),
               name: safeName,
@@ -116,7 +130,7 @@ export function useUpload(options: UseUploadOptions): UploadState & UploadOperat
               cid: result.cid,
               date: new Date().toLocaleString(),
               folder_id: currentFolderId || "default",
-              hash: result.hash,
+              hash: localHash, // 使用本地计算的 hash
               verified: false,
               verify_status: "pending",
               uploadedAt: Date.now(),
@@ -124,23 +138,10 @@ export function useUpload(options: UseUploadOptions): UploadState & UploadOperat
 
             await api.saveFile(fileRecord);
             setFiles((prev) => [fileRecord, ...prev]);
-            showToast(`文件 ${safeName} 上传成功`, "success");
 
-            // 后台静默传播文件到其他网关，不阻塞主流程
-            if (gateways.length > 0) {
-              propagationApi.backgroundPropagate(result.cid, gateways, {
-                maxGateways: 8,
-                timeout: 15000,
-                onComplete: (propResult) => {
-                  if (propResult.success.length > 0) {
-                    console.log(`文件已传播到 ${propResult.success.length} 个网关`);
-                  }
-                },
-              });
-            }
-
-            // 后台快速验证文件完整性
-            uploadApi.verifyFile(result.cid).then((verifyResult) => {
+            // 步骤 6: 后台完整性验证
+            setUploadProgress(80);
+            uploadApi.verifyFileWithHash(result.cid, localHash, file.size).then((verifyResult) => {
               const updatedFile: FileRecord = {
                 ...fileRecord,
                 verified: verifyResult.verified,
@@ -158,16 +159,40 @@ export function useUpload(options: UseUploadOptions): UploadState & UploadOperat
                 console.error("保存验证结果失败:", err);
               });
 
-              // 可选：根据验证结果显示提示
+              // 根据验证结果显示提示
               if (verifyResult.verified) {
-                console.log(`文件 ${safeName} 完整性验证通过`);
+                showToast(`文件 ${safeName} 完整性验证通过`, "success");
               } else if (verifyResult.status === "failed") {
-                console.warn(`文件 ${safeName} 完整性验证失败:`, verifyResult.message);
+                showToast(`文件 ${safeName} 完整性验证失败: ${verifyResult.message}`, "error");
+
+                // 自动添加到修复队列
+                const repairService = getAutoRepairService();
+                repairService.addTask(updatedFile);
+                console.log(`[Upload] 文件已添加到自动修复队列: ${safeName}`);
               }
             }).catch((err) => {
               console.error("文件验证过程出错:", err);
+
+              // 验证出错时也添加到修复队列
+              const repairService = getAutoRepairService();
+              repairService.addTask(fileRecord);
             });
 
+            // 步骤 7: 后台静默传播文件到其他网关
+            if (gateways.length > 0) {
+              propagationApi.backgroundPropagate(result.cid, gateways, {
+                maxGateways: 8,
+                timeout: 15000,
+                onComplete: (propResult) => {
+                  if (propResult.success.length > 0) {
+                    console.log(`文件已传播到 ${propResult.success.length} 个网关`);
+                  }
+                },
+              });
+            }
+
+            setUploadProgress(100);
+            showToast(`文件 ${safeName} 上传成功`, "success");
             onUploadSuccess?.(fileRecord);
           } catch (error) {
             if (error instanceof Error && error.name === 'AbortError') {

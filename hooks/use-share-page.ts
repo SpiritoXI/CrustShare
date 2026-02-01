@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { gatewayApi, shareApi } from "@/lib/api";
+import { gatewayApi, shareApi, downloadApi } from "@/lib/api";
 import { CONFIG } from "@/lib/config";
 import { useGatewayStore } from "@/lib/store";
 import { copyToClipboard } from "@/lib/utils";
-import type { Gateway } from "@/types";
+import { verifyFileIntegrity } from "@/lib/security";
+import type { Gateway, FileRecord } from "@/types";
 
 interface ShareInfo {
   cid: string;
@@ -189,40 +190,51 @@ export function useSharePage(cid: string) {
   }, [cid]);
 
   // 下载文件
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (!selectedGateway) return;
 
     setIsDownloading(true);
     setDownloadProgress(0);
 
-    const url = `${selectedGateway.url}${cid}`;
+    try {
+      const result = await downloadApi.downloadFile(
+        cid,
+        shareInfo?.filename || `file-${cid.slice(0, 8)}`,
+        selectedGateway,
+        undefined, // 分享页面可能没有存储的 hash
+        (progress) => setDownloadProgress(progress)
+      );
 
-    const progressInterval = setInterval(() => {
-      setDownloadProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90;
-        }
-        return prev + 10;
-      });
-    }, 200);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = shareInfo?.filename || `file-${cid.slice(0, 8)}`;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setTimeout(() => {
-      clearInterval(progressInterval);
-      setDownloadProgress(100);
+      if (result.success && result.blob) {
+        downloadApi.triggerDownload(result.blob, shareInfo?.filename || `file-${cid.slice(0, 8)}`);
+        setDownloadProgress(100);
+      } else {
+        // 如果下载失败，回退到直接链接下载
+        const url = `${selectedGateway.url}${cid}`;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = shareInfo?.filename || `file-${cid.slice(0, 8)}`;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch {
+      // 出错时回退到直接链接下载
+      const url = `${selectedGateway.url}${cid}`;
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = shareInfo?.filename || `file-${cid.slice(0, 8)}`;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } finally {
       setTimeout(() => {
         setIsDownloading(false);
         setDownloadProgress(0);
       }, 1000);
-    }, 2000);
+    }
   }, [cid, selectedGateway, shareInfo?.filename]);
 
   // 智能下载

@@ -895,7 +895,11 @@ export function useDashboard() {
     if (propagatingFiles.has(String(file.id))) return;
 
     // 使用所有网关进行传播，不仅限于当前可用的网关
-    const allGateways = gateways.length > 0 ? gateways : CONFIG.DEFAULT_GATEWAYS;
+    // 合并默认网关和扩展网关，确保传播到所有可能的网关
+    const allGateways = gateways.length > 0 
+      ? gateways 
+      : [...CONFIG.DEFAULT_GATEWAYS, ...CONFIG.EXTENDED_GATEWAYS];
+    
     if (allGateways.length === 0) {
       showToast("没有可传播的网关", "error");
       return;
@@ -903,43 +907,40 @@ export function useDashboard() {
 
     setPropagatingFiles(prev => new Set(prev).add(String(file.id)));
     
-    if (propagateToAll) {
-      showToast(`开始传播文件到所有 ${allGateways.length} 个网关...`, "info");
-    } else {
-      showToast(`开始智能传播文件到 ${Math.min(10, allGateways.length)} 个优选网关...`, "info");
-    }
+    // 始终传播到所有网关，不再限制为10个
+    showToast(`开始传播文件到所有 ${allGateways.length} 个网关...`, "info");
 
     try {
-      let result;
-      if (propagateToAll) {
-        // 传播到所有网关
-        result = await propagationApi.propagateToAllGateways(file.cid, allGateways, {
-          timeout: 20000,
-          onProgress: (gateway, status) => {
-            console.log(`[Propagation] ${gateway.name}: ${status}`);
-          },
-        });
-      } else {
-        // 智能传播到优选网关（最多10个）
-        result = await propagationApi.smartPropagate(file.cid, allGateways, {
-          maxGateways: 10,
-          timeout: 20000,
-          onProgress: (gateway, status) => {
-            console.log(`[Propagation] ${gateway.name}: ${status}`);
-          },
-        });
-      }
+      // 始终使用 propagateToAllGateways 传播到所有网关
+      const result = await propagationApi.propagateToAllGateways(file.cid, allGateways, {
+        timeout: 30000,
+        onProgress: (gateway, status, error) => {
+          console.log(`[Propagation] ${gateway.name}: ${status}${error ? ` (${error})` : ''}`);
+        },
+      });
 
-      console.log(`[Propagation] Result for ${file.cid.slice(0, 16)}...:`, result);
+      console.log(`[Propagation] Result for ${file.cid.slice(0, 16)}...:`, {
+        success: result.success.length,
+        failed: result.failed.length,
+        total: result.total,
+      });
 
       if (result.success.length > 0) {
-        showToast(`文件已成功传播到 ${result.success.length}/${result.total} 个网关`, "success");
+        const successRate = Math.round((result.success.length / result.total) * 100);
+        showToast(`传播完成: ${result.success.length}/${result.total} 成功 (${successRate}%)`, "success");
       } else {
-        showToast(`文件传播失败，${result.failed.length} 个网关不可用`, "error");
+        // 分析失败原因
+        const errorTypes = new Map<string, number>();
+        result.errors.forEach((error) => {
+          errorTypes.set(error, (errorTypes.get(error) || 0) + 1);
+        });
+        const mainError = Array.from(errorTypes.entries())
+          .sort((a, b) => b[1] - a[1])[0];
+        showToast(`传播失败: ${result.failed.length} 个网关不可用${mainError ? ` (主要原因: ${mainError[0]})` : ''}`, "error");
       }
     } catch (error) {
       console.error(`[Propagation] Error for ${file.cid.slice(0, 16)}...:`, error);
-      showToast("文件传播失败: " + (error instanceof Error ? error.message : "未知错误"), "error");
+      showToast("传播失败: " + (error instanceof Error ? error.message : "未知错误"), "error");
     } finally {
       setPropagatingFiles(prev => {
         const next = new Set(prev);

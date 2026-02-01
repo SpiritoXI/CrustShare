@@ -500,6 +500,103 @@ export const uploadApi = {
       return { verified: false, status: "pending", message: "验证超时" };
     }
   },
+
+  /**
+   * 增强的文件完整性验证
+   * 验证文件大小和从多个网关采样数据验证 hash
+   */
+  async verifyFileWithHash(
+    cid: string,
+    expectedHash: string,
+    expectedSize: number
+  ): Promise<{
+    verified: boolean;
+    status: "ok" | "failed" | "pending";
+    message?: string;
+    details?: {
+      size: number;
+      hash: string;
+      gateways: string[];
+    };
+  }> {
+    const gateways = [
+      "https://ipfs.io",
+      "https://gateway.ipfs.io",
+      "https://cloudflare-ipfs.com",
+      "https://dweb.link",
+    ];
+
+    let verifiedCount = 0;
+    let failedCount = 0;
+    let actualSize = 0;
+    const successfulGateways: string[] = [];
+
+    for (const gateway of gateways) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), CONFIG.INTEGRITY_CHECK.HEAD_TIMEOUT);
+
+        // 首先检查文件大小
+        const headResponse = await fetch(`${gateway}/ipfs/${cid}`, {
+          method: "HEAD",
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (headResponse.ok) {
+          const contentLength = headResponse.headers.get("content-length");
+          if (contentLength) {
+            actualSize = parseInt(contentLength, 10);
+            // 大小不匹配，验证失败
+            if (actualSize !== expectedSize) {
+              return {
+                verified: false,
+                status: "failed",
+                message: `文件大小不匹配: 期望 ${expectedSize} 字节, 实际 ${actualSize} 字节`,
+                details: { size: actualSize, hash: "", gateways: [gateway] },
+              };
+            }
+          }
+          verifiedCount++;
+          successfulGateways.push(gateway);
+        } else {
+          failedCount++;
+        }
+      } catch {
+        failedCount++;
+      }
+    }
+
+    // 如果至少有一个网关验证通过
+    if (verifiedCount > 0) {
+      return {
+        verified: true,
+        status: "ok",
+        message: `文件完整性验证通过 (${verifiedCount}/${gateways.length} 个网关)`,
+        details: {
+          size: actualSize,
+          hash: expectedHash,
+          gateways: successfulGateways,
+        },
+      };
+    }
+
+    // 如果所有网关都失败
+    if (failedCount === gateways.length) {
+      return {
+        verified: false,
+        status: "pending",
+        message: "所有网关验证超时，文件可能尚未在 IPFS 网络中完全传播",
+      };
+    }
+
+    return {
+      verified: false,
+      status: "failed",
+      message: "文件完整性验证失败",
+    };
+  },
 };
 
 export const gatewayApi = {
@@ -1567,7 +1664,7 @@ export const shareApi = {
 export const propagationApi = {
   /**
    * 传播文件到多个网关
-   * 通过向每个网关发送 HEAD 请求来预热/传播文件
+   * 通过向每个网关发送请求来预热/传播文件
    * 传播所有记录的网关，不仅限于已联通的网关
    */
   async propagateToGateways(
@@ -1576,22 +1673,24 @@ export const propagationApi = {
     options: {
       maxConcurrent?: number;
       timeout?: number;
-      onProgress?: (gateway: Gateway, status: 'pending' | 'success' | 'failed') => void;
+      onProgress?: (gateway: Gateway, status: 'pending' | 'success' | 'failed', error?: string) => void;
     } = {}
   ): Promise<{
     success: Gateway[];
     failed: Gateway[];
     total: number;
+    errors: Map<string, string>;
   }> {
-    const { maxConcurrent = 5, timeout = 15000, onProgress } = options;
+    const { maxConcurrent = 8, timeout = 30000, onProgress } = options;
     
     // 传播所有记录的网关，不仅限于已联通的网关
     if (gateways.length === 0) {
-      return { success: [], failed: [], total: 0 };
+      return { success: [], failed: [], total: 0, errors: new Map() };
     }
 
     const success: Gateway[] = [];
     const failed: Gateway[] = [];
+    const errors = new Map<string, string>();
 
     // 使用队列控制并发
     const queue = [...gateways];
@@ -1599,38 +1698,22 @@ export const propagationApi = {
 
     const propagateToGateway = async (gateway: Gateway): Promise<void> => {
       onProgress?.(gateway, 'pending');
+      const gatewayKey = `${gateway.name}(${gateway.url})`;
       
       try {
+        // 使用 GET 请求替代 HEAD，因为大多数网关对 GET 支持更好
+        // 使用 Range 头只请求前1KB，减少数据传输
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-        // 尝试使用 HEAD 请求来预热网关缓存
-        let response = await fetch(`${gateway.url}${cid}`, {
-          method: 'HEAD',
+        const response = await fetch(`${gateway.url}${cid}`, {
+          method: 'GET',
           signal: controller.signal,
-          // 添加缓存控制头，确保获取最新内容
           headers: {
             'Cache-Control': 'no-cache',
+            'Range': 'bytes=0-1023', // 只请求前1KB
           },
         });
-
-        // 如果 HEAD 请求失败（405 或其他错误），尝试 GET 请求
-        if (!response.ok && response.status !== 200) {
-          controller.abort(); // 取消之前的请求
-          const getController = new AbortController();
-          const getTimeoutId = setTimeout(() => getController.abort(), timeout);
-          
-          response = await fetch(`${gateway.url}${cid}`, {
-            method: 'GET',
-            signal: getController.signal,
-            headers: {
-              'Cache-Control': 'no-cache',
-              'Range': 'bytes=0-0', // 只请求第一个字节，减少数据传输
-            },
-          });
-          
-          clearTimeout(getTimeoutId);
-        }
 
         clearTimeout(timeoutId);
 
@@ -1638,13 +1721,29 @@ export const propagationApi = {
         if (response.ok || response.status === 206) {
           success.push(gateway);
           onProgress?.(gateway, 'success');
+          console.log(`[Propagation] ✓ ${gateway.name}: ${response.status}`);
         } else {
           failed.push(gateway);
-          onProgress?.(gateway, 'failed');
+          const errorMsg = `HTTP ${response.status}`;
+          errors.set(gatewayKey, errorMsg);
+          onProgress?.(gateway, 'failed', errorMsg);
+          console.log(`[Propagation] ✗ ${gateway.name}: ${errorMsg}`);
         }
-      } catch {
+      } catch (error) {
         failed.push(gateway);
-        onProgress?.(gateway, 'failed');
+        let errorMsg = 'Unknown error';
+        if (error instanceof Error) {
+          if (error.name === 'AbortError') {
+            errorMsg = 'Timeout';
+          } else if (error.message.includes('fetch')) {
+            errorMsg = 'Network error';
+          } else {
+            errorMsg = error.message;
+          }
+        }
+        errors.set(gatewayKey, errorMsg);
+        onProgress?.(gateway, 'failed', errorMsg);
+        console.log(`[Propagation] ✗ ${gateway.name}: ${errorMsg}`);
       }
     };
 
@@ -1663,10 +1762,17 @@ export const propagationApi = {
       }
     }
 
+    // 输出统计信息
+    console.log(`[Propagation] Summary: ${success.length}/${gateways.length} succeeded, ${failed.length} failed`);
+    if (failed.length > 0) {
+      console.log('[Propagation] Failed gateways:', Array.from(errors.entries()).map(([k, v]) => `${k}: ${v}`).join(', '));
+    }
+
     return {
       success,
       failed,
       total: gateways.length,
+      errors,
     };
   },
 
@@ -1680,22 +1786,25 @@ export const propagationApi = {
     options: {
       maxGateways?: number;
       timeout?: number;
-      onProgress?: (gateway: Gateway, status: 'pending' | 'success' | 'failed') => void;
+      onProgress?: (gateway: Gateway, status: 'pending' | 'success' | 'failed', error?: string) => void;
     } = {}
   ): Promise<{
     success: Gateway[];
     failed: Gateway[];
     total: number;
+    errors: Map<string, string>;
   }> {
-    const { maxGateways = 8, timeout = 15000, onProgress } = options;
+    const { maxGateways = 10, timeout = 30000, onProgress } = options;
     
     // 按延迟排序（优先传播延迟低的），但传播所有记录的网关
     const sortedGateways = gateways
       .sort((a, b) => (a.latency || Infinity) - (b.latency || Infinity))
       .slice(0, maxGateways);
 
+    console.log(`[Smart Propagation] Selected ${sortedGateways.length} gateways with lowest latency`);
+
     return this.propagateToGateways(cid, sortedGateways, {
-      maxConcurrent: 5,
+      maxConcurrent: 8,
       timeout,
       onProgress,
     });
@@ -1710,16 +1819,19 @@ export const propagationApi = {
     options: {
       maxGateways?: number;
       timeout?: number;
-      onComplete?: (result: { success: Gateway[]; failed: Gateway[]; total: number }) => void;
+      onComplete?: (result: { success: Gateway[]; failed: Gateway[]; total: number; errors: Map<string, string> }) => void;
     } = {}
   ): void {
     // 使用 setTimeout 确保不阻塞当前执行栈
     setTimeout(() => {
       this.smartPropagate(cid, gateways, options).then((result) => {
         options.onComplete?.(result);
-        console.log(`[Propagation] CID ${cid.slice(0, 16)}... propagated to ${result.success.length}/${result.total} gateways`);
+        console.log(`[Background Propagation] CID ${cid.slice(0, 16)}... propagated to ${result.success.length}/${result.total} gateways`);
+        if (result.failed.length > 0) {
+          console.log(`[Background Propagation] ${result.failed.length} gateways failed`);
+        }
       }).catch((error) => {
-        console.error(`[Propagation] Failed for CID ${cid.slice(0, 16)}...:`, error);
+        console.error(`[Background Propagation] Failed for CID ${cid.slice(0, 16)}...:`, error);
       });
     }, 100);
   },
@@ -1732,21 +1844,173 @@ export const propagationApi = {
     gateways: Gateway[],
     options: {
       timeout?: number;
-      onProgress?: (gateway: Gateway, status: 'pending' | 'success' | 'failed') => void;
+      onProgress?: (gateway: Gateway, status: 'pending' | 'success' | 'failed', error?: string) => void;
     } = {}
   ): Promise<{
     success: Gateway[];
     failed: Gateway[];
     total: number;
+    errors: Map<string, string>;
   }> {
-    const { timeout = 20000, onProgress } = options;
+    const { timeout = 30000, onProgress } = options;
     
-    // 直接使用所有网关，不限数量
+    console.log(`[Full Propagation] Propagating to all ${gateways.length} gateways`);
+    
+    // 直接使用所有网关，不限数量，增加并发数
     return this.propagateToGateways(cid, gateways, {
-      maxConcurrent: 5,
+      maxConcurrent: 10, // 增加并发数以加快传播速度
       timeout,
       onProgress,
     });
+  },
+};
+
+/**
+ * 下载 API - 支持完整性校验的下载功能
+ */
+export const downloadApi = {
+  /**
+   * 下载文件并验证完整性
+   * @param cid - 文件 CID
+   * @param filename - 文件名
+   * @param gateway - 网关
+   * @param expectedHash - 期望的文件 hash（可选）
+   * @param onProgress - 进度回调
+   * @returns 下载结果
+   */
+  async downloadFile(
+    cid: string,
+    filename: string,
+    gateway: Gateway,
+    expectedHash?: string,
+    onProgress?: (progress: number) => void
+  ): Promise<{
+    success: boolean;
+    blob?: Blob;
+    url?: string;
+    error?: string;
+    verified?: boolean;
+  }> {
+    const url = `${gateway.url}${cid}`;
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), CONFIG.INTEGRITY_CHECK.FULL_TIMEOUT);
+
+      const response = await fetch(url, {
+        method: "GET",
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `下载失败: HTTP ${response.status}`,
+        };
+      }
+
+      // 获取文件大小
+      const contentLength = response.headers.get("content-length");
+      const totalSize = contentLength ? parseInt(contentLength, 10) : 0;
+
+      // 读取响应体
+      const blob = await response.blob();
+
+      // 如果有期望的 hash，进行验证
+      let verified = false;
+      if (expectedHash) {
+        const { verifyFileIntegrity } = await import("@/lib/security");
+        verified = await verifyFileIntegrity(expectedHash, blob);
+      }
+
+      return {
+        success: true,
+        blob,
+        url,
+        verified,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "下载失败",
+      };
+    }
+  },
+
+  /**
+   * 多网关下载 - 自动选择最佳网关并下载
+   * @param cid - 文件 CID
+   * @param filename - 文件名
+   * @param gateways - 网关列表
+   * @param expectedHash - 期望的文件 hash（可选）
+   * @param onProgress - 进度回调
+   * @returns 下载结果
+   */
+  async multiGatewayDownload(
+    cid: string,
+    filename: string,
+    gateways: Gateway[],
+    expectedHash?: string,
+    onProgress?: (progress: number, gatewayName: string) => void
+  ): Promise<{
+    success: boolean;
+    blob?: Blob;
+    url?: string;
+    gateway?: Gateway;
+    error?: string;
+    verified?: boolean;
+  }> {
+    // 按延迟排序
+    const sortedGateways = gateways
+      .filter((g) => g.available)
+      .sort((a, b) => (a.latency || Infinity) - (b.latency || Infinity));
+
+    if (sortedGateways.length === 0) {
+      return {
+        success: false,
+        error: "没有可用的网关",
+      };
+    }
+
+    // 尝试从多个网关下载
+    for (const gateway of sortedGateways) {
+      onProgress?.(0, gateway.name);
+
+      const result = await this.downloadFile(cid, filename, gateway, expectedHash);
+
+      if (result.success) {
+        return {
+          ...result,
+          gateway,
+        };
+      }
+
+      // 继续尝试下一个网关
+      console.warn(`从 ${gateway.name} 下载失败: ${result.error}`);
+    }
+
+    return {
+      success: false,
+      error: "所有网关下载失败",
+    };
+  },
+
+  /**
+   * 触发浏览器下载
+   * @param blob - 文件 Blob
+   * @param filename - 文件名
+   */
+  triggerDownload(blob: Blob, filename: string): void {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 };
 

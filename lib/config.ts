@@ -59,11 +59,11 @@ export const GATEWAY_FETCH_TEST = {
 } as const;
 
 /**
- * 默认网关列表 - 精选11个常用网关
+ * 默认网关列表 - 精选15个常用网关
  * 这些网关经过筛选，在国内访问速度较快
  */
 export const DEFAULT_GATEWAYS: Gateway[] = [
-  // 国内友好网关 - 优先检测
+  // 国内友好网关 - 优先检测 (15个)
   { name: 'Cloudflare', url: 'https://cf-ipfs.com/ipfs/', icon: '⚡', priority: 1, region: 'CN' },
   { name: 'IPFSScan', url: 'https://cdn.ipfsscan.io/ipfs/', icon: '🚀', priority: 2, region: 'CN' },
   { name: '4EVERLAND', url: 'https://4everland.io/ipfs/', icon: '🍀', priority: 3, region: 'CN' },
@@ -75,6 +75,10 @@ export const DEFAULT_GATEWAYS: Gateway[] = [
   { name: 'Web3 Storage', url: 'https://ipfs.web3.storage/ipfs/', icon: '🌐', priority: 9, region: 'CN' },
   { name: 'NFT Storage', url: 'https://nftstorage.link/ipfs/', icon: '🖼️', priority: 10, region: 'CN' },
   { name: 'Pinata', url: 'https://gateway.pinata.cloud/ipfs/', icon: '🪅', priority: 11, region: 'CN' },
+  { name: 'Flk-IPFS', url: 'https://flk-ipfs.xyz/ipfs/', icon: '🔥', priority: 12, region: 'CN' },
+  { name: 'IPFS Cross', url: 'https://ipfs.crossbell.io/ipfs/', icon: '✝️', priority: 13, region: 'CN' },
+  { name: 'Conflux', url: 'https://ipfs.confluxnetwork.org/ipfs/', icon: '🔷', priority: 14, region: 'CN' },
+  { name: 'Crust-IPFS', url: 'https://ipfs.crust.network/ipfs/', icon: '🦀', priority: 15, region: 'CN' },
 ];
 
 /**
@@ -83,19 +87,14 @@ export const DEFAULT_GATEWAYS: Gateway[] = [
  */
 export const EXTENDED_GATEWAYS: Gateway[] = [
   // 亚洲区域
-  { name: 'Flk-IPFS', url: 'https://flk-ipfs.xyz/ipfs/', icon: '🔥', priority: 11, region: 'CN' },
-  { name: 'IPFS Cross', url: 'https://ipfs.crossbell.io/ipfs/', icon: '✝️', priority: 12, region: 'CN' },
-  { name: 'Conflux', url: 'https://ipfs.confluxnetwork.org/ipfs/', icon: '🔷', priority: 13, region: 'CN' },
-  { name: 'C4', url: 'https://c4rex.co/ipfs/', icon: '🎯', priority: 14, region: 'CN' },
-  { name: 'IPFS ETH', url: 'https://ipfs.eth.aragon.network/ipfs/', icon: '⬡', priority: 15, region: 'CN' },
-  { name: 'Hardbin', url: 'https://hardbin.com/ipfs/', icon: '📦', priority: 16, region: 'CN' },
-  { name: 'Fleek', url: 'https://ipfs.fleek.co/ipfs/', icon: '⚙️', priority: 17, region: 'CN' },
-  { name: 'Sola', url: 'https://ipfs.sola.day/ipfs/', icon: '☀️', priority: 18, region: 'CN' },
-  { name: 'JPU', url: 'https://ipfs.jpu.jp/ipfs/', icon: '🇯🇵', priority: 19, region: 'CN' },
-  { name: 'Crust-IPFS', url: 'https://ipfs.crust.network/ipfs/', icon: '🦀', priority: 20, region: 'CN' },
+  { name: 'C4', url: 'https://c4rex.co/ipfs/', icon: '🎯', priority: 16, region: 'CN' },
+  { name: 'IPFS ETH', url: 'https://ipfs.eth.aragon.network/ipfs/', icon: '⬡', priority: 17, region: 'CN' },
+  { name: 'Hardbin', url: 'https://hardbin.com/ipfs/', icon: '📦', priority: 18, region: 'CN' },
+  { name: 'Fleek', url: 'https://ipfs.fleek.co/ipfs/', icon: '⚙️', priority: 19, region: 'CN' },
+  { name: 'Sola', url: 'https://ipfs.sola.day/ipfs/', icon: '☀️', priority: 20, region: 'CN' },
+  { name: 'JPU', url: 'https://ipfs.jpu.jp/ipfs/', icon: '🇯🇵', priority: 21, region: 'CN' },
 
   // 国际区域
-  { name: 'Pinata', url: 'https://gateway.pinata.cloud/ipfs/', icon: '🪅', priority: 21, region: 'INTL' },
   { name: 'Infura', url: 'https://ipfs.infura.io/ipfs/', icon: '🔮', priority: 22, region: 'INTL' },
   { name: 'Crust', url: 'https://crustwebsites.net/ipfs/', icon: '🔸', priority: 23, region: 'INTL' },
   { name: 'Filebase', url: 'https://ipfs.filebase.io/ipfs/', icon: '📁', priority: 24, region: 'INTL' },
@@ -234,6 +233,7 @@ export const CONFIG = {
   TEST_CID: CRUST.TEST_CID,
   PUBLIC_GATEWAY_SOURCES,
   DEFAULT_GATEWAYS,
+  EXTENDED_GATEWAYS,
   GATEWAY_FETCH_TEST,
   GATEWAY_TEST,
   GATEWAY_HEALTH,
