@@ -117,34 +117,34 @@ export function useDashboard() {
 
         // 标记数据已加载
         dataLoadedRef.current = true;
-
-        // 登录后自动检测网关（在后台静默执行）
-        // 检查缓存是否过期或是否需要重新检测
-        const shouldTestGateways = !cachedGateways ||
-          cachedGateways.length === 0 ||
-          (cachedGateways[0]?.lastChecked &&
-            Date.now() - cachedGateways[0].lastChecked > 5 * 60 * 1000);
-
-        if (shouldTestGateways) {
-          setIsTestingGateways(true);
-          try {
-            const allGateways = gateways.length > 0 ? [...gateways] : [...CONFIG.DEFAULT_GATEWAYS];
-            const results = await gatewayApi.testAllGateways(allGateways);
-            setGateways(results);
-            gatewayApi.cacheResults(results);
-            const availableCount = results.filter(g => g.available).length;
-            showToast(`网关检测完成，${availableCount} 个可用`, "success");
-          } catch {
-            console.error("自动网关检测失败");
-          } finally {
-            setIsTestingGateways(false);
-          }
-        }
       } catch (error) {
         showToast("加载数据失败", "error");
         console.error("Failed to load data:", error);
       } finally {
         setIsLoading(false);
+      }
+
+      // 登录后自动检测网关（在后台静默执行，不阻塞文件列表加载）
+      // 检查缓存是否过期或是否需要重新检测
+      const shouldTestGateways = !cachedGateways ||
+        cachedGateways.length === 0 ||
+        (cachedGateways[0]?.lastChecked &&
+          Date.now() - cachedGateways[0].lastChecked > 5 * 60 * 1000);
+
+      if (shouldTestGateways) {
+        setIsTestingGateways(true);
+        try {
+          const allGateways = CONFIG.DEFAULT_GATEWAYS;
+          const results = await gatewayApi.testAllGateways(allGateways);
+          setGateways(results);
+          gatewayApi.cacheResults(results);
+          const availableCount = results.filter(g => g.available).length;
+          showToast(`网关检测完成，${availableCount} 个可用`, "success");
+        } catch {
+          console.error("自动网关检测失败");
+        } finally {
+          setIsTestingGateways(false);
+        }
       }
     };
 
