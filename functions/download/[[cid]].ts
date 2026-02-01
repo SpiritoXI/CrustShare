@@ -1,6 +1,6 @@
 // Cloudflare Pages Function - 处理下载页面的动态路由
-export async function onRequest(context: { request: Request; env: unknown }): Promise<Response> {
-  const { request } = context;
+export async function onRequest(context: { request: Request; env: Env }): Promise<Response> {
+  const { request, env } = context;
   const url = new URL(request.url);
 
   // 获取 CID 从路径中
@@ -11,31 +11,64 @@ export async function onRequest(context: { request: Request; env: unknown }): Pr
   const filename = url.searchParams.get('filename') || '';
   const size = url.searchParams.get('size') || '';
 
-  // 返回下载页面的 HTML，CID 将在客户端通过 JavaScript 解析
-  const html = `<!DOCTYPE html>
+  try {
+    // 从 ASSETS 中获取生成的 HTML 文件
+    const assetUrl = new URL('/download/placeholder/index.html', url.origin);
+    const response = await env.ASSETS.fetch(assetUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch HTML: ${response.status}`);
+    }
+
+    let html = await response.text();
+
+    // 在 </head> 前注入全局变量脚本
+    const injectScript = `<script>
+  window.__DOWNLOAD_CID__ = "${cid || ''}";
+  window.__DOWNLOAD_FILENAME__ = "${filename}";
+  window.__DOWNLOAD_SIZE__ = "${size}";
+</script>`;
+
+    html = html.replace('</head>', `${injectScript}</head>`);
+
+    return new Response(html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html;charset=UTF-8',
+      },
+    });
+  } catch (error) {
+    console.error('Error serving download page:', error);
+    
+    // 降级方案：返回简单的错误页面
+    return new Response(`
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CrustShare - 下载文件</title>
-  <meta name="description" content="去中心化文件存储与分享平台 - 下载文件">
   <script>
-    // 将 CID 和文件信息存储在全局变量中，供 React 应用使用
     window.__DOWNLOAD_CID__ = "${cid || ''}";
     window.__DOWNLOAD_FILENAME__ = "${filename}";
     window.__DOWNLOAD_SIZE__ = "${size}";
   </script>
+  <script src="/_next/static/chunks/main-app-cf26c096f2c84409.js" async crossorigin></script>
 </head>
 <body>
   <div id="__next"></div>
-  <script src="/_next/static/chunks/main-app.js"></script>
 </body>
-</html>`;
+</html>`, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html;charset=UTF-8',
+      },
+    });
+  }
+}
 
-  return new Response(html, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/html;charset=UTF-8',
-    },
-  });
+interface Env {
+  ASSETS: {
+    fetch: (request: Request | URL) => Promise<Response>;
+  };
 }
