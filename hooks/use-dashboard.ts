@@ -120,7 +120,6 @@ export function useDashboard() {
 
         // 登录后自动检测网关（在后台静默执行）
         // 检查缓存是否过期或是否需要重新检测
-        const cachedGateways = gatewayApi.getCachedResults();
         const shouldTestGateways = !cachedGateways ||
           cachedGateways.length === 0 ||
           (cachedGateways[0]?.lastChecked &&
