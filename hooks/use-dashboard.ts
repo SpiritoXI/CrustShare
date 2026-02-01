@@ -405,21 +405,42 @@ export function useDashboard() {
     }
   }, []);
 
-  // Handle refresh gateways
+  // Handle refresh gateways - 只重新检测不可用的网关
   const handleRefreshGateways = useCallback(async () => {
     // 创建新的 AbortController
     gatewayTestAbortControllerRef.current = new AbortController();
 
     setIsTestingGateways(true);
     try {
-      // 如果 gateways 为空，使用默认网关
-      const allGateways = gateways.length > 0 ? [...gateways] : [...CONFIG.DEFAULT_GATEWAYS];
-      const results = await gatewayApi.testAllGateways(allGateways, {
+      // 筛选出不可用的网关进行重新检测
+      const unavailableGateways = gateways.filter(g => !g.available);
+      
+      if (unavailableGateways.length === 0) {
+        showToast("所有网关都可用，无需重新检测", "info");
+        return;
+      }
+
+      showToast(`正在重新检测 ${unavailableGateways.length} 个不可用网关...`, "info");
+
+      // 只检测不可用的网关
+      const results = await gatewayApi.testAllGateways(unavailableGateways, {
         signal: gatewayTestAbortControllerRef.current.signal,
       });
-      setGateways(results);
-      gatewayApi.cacheResults(results);
-      showToast("网关刷新完成", "success");
+
+      // 合并结果：保留原有的可用网关 + 新检测的网关
+      const availableGateways = gateways.filter(g => g.available);
+      const allGateways = [...availableGateways, ...results];
+      
+      // 去重并排序
+      const uniqueGateways = allGateways.filter(
+        (gateway, index, self) => index === self.findIndex((g) => g.url === gateway.url)
+      );
+
+      setGateways(uniqueGateways);
+      gatewayApi.cacheResults(uniqueGateways);
+      
+      const newlyAvailable = results.filter(g => g.available).length;
+      showToast(`网关刷新完成，${newlyAvailable} 个网关恢复可用`, "success");
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         showToast("网关检测已取消", "info");
