@@ -243,14 +243,14 @@ export function useDashboard() {
     async (fileId: string | number) => {
       try {
         await api.deleteFile(fileId.toString());
-        const updatedFiles = files.filter((f) => f.id !== fileId.toString());
-        setFiles(updatedFiles);
+        // 使用函数式更新，避免依赖外部的 files 数组
+        setFiles((prev) => prev.filter((f) => f.id !== fileId.toString()));
         showToast("文件已删除", "success");
       } catch {
         showToast("删除文件失败", "error");
       }
     },
-    [files, showToast]
+    [showToast]
   );
 
   // Handle copy CID
@@ -559,10 +559,12 @@ export function useDashboard() {
 
       try {
         await api.moveFiles([selectedFileToMove.id], targetFolderId || "default");
-        const updatedFiles = files.map((f) =>
-          f.id === selectedFileToMove.id ? { ...f, folder_id: targetFolderId || "default" } : f
+        // 使用函数式更新，避免依赖外部的 files 数组
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === selectedFileToMove.id ? { ...f, folder_id: targetFolderId || "default" } : f
+          )
         );
-        setFiles(updatedFiles);
         setMoveModalOpen(false);
         setSelectedFileToMove(null);
         showToast("文件移动成功", "success");
@@ -570,7 +572,7 @@ export function useDashboard() {
         showToast("移动文件失败", "error");
       }
     },
-    [selectedFileToMove, files, showToast]
+    [selectedFileToMove, showToast]
   );
 
   // Handle detect CID info
@@ -731,17 +733,19 @@ export function useDashboard() {
 
       try {
         await api.moveFiles(selectedFiles, targetFolderId || "default");
-        const updatedFiles = files.map((f) =>
-          selectedFiles.includes(String(f.id)) ? { ...f, folder_id: targetFolderId || "default" } : f
+        // 使用函数式更新，避免依赖外部的 files 数组
+        setFiles((prev) =>
+          prev.map((f) =>
+            selectedFiles.includes(String(f.id)) ? { ...f, folder_id: targetFolderId || "default" } : f
+          )
         );
-        setFiles(updatedFiles);
         setSelectedFiles([]);
         showToast(`已移动 ${selectedFiles.length} 个文件`, "success");
       } catch {
         showToast("批量移动失败", "error");
       }
     },
-    [selectedFiles, files, showToast]
+    [selectedFiles, showToast]
   );
 
   // Handle batch delete
