@@ -192,10 +192,18 @@ export const useFileStore = create<FileState>()((set, get) => ({
     if (typeof files === "function") {
       set((state) => {
         const newFiles = files(state.files);
-        return { files: newFiles };
+        // 基于 CID 去重，保留最新的文件
+        const uniqueFiles = Array.from(
+          new Map(newFiles.map((f) => [f.cid, f])).values()
+        );
+        return { files: uniqueFiles };
       });
     } else {
-      set({ files });
+      // 基于 CID 去重，保留最新的文件
+      const uniqueFiles = Array.from(
+        new Map(files.map((f) => [f.cid, f])).values()
+      );
+      set({ files: uniqueFiles });
     }
     get().updateStorageStats();
   },

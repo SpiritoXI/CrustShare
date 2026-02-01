@@ -677,8 +677,8 @@ export function useDashboard() {
       };
 
       await api.saveFile(fileRecord);
-      const updatedFiles = [fileRecord, ...files];
-      setFiles(updatedFiles);
+      // 使用函数式更新，避免依赖外部的 files 数组
+      setFiles((prev) => [fileRecord, ...prev]);
       
       // 重置状态
       setAddCidModalOpen(false);
@@ -692,7 +692,7 @@ export function useDashboard() {
     } finally {
       setIsAddingCid(false);
     }
-  }, [currentFolderId, newCid, newCidName, newCidSize, files, showToast, detectedCidInfo]);
+  }, [currentFolderId, newCid, newCidName, newCidSize, showToast, detectedCidInfo]);
 
   // Handle toggle selection
   const handleToggleSelection = useCallback(
