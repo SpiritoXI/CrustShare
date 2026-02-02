@@ -165,32 +165,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
     );
 
     if (!result) {
-      // 如果找不到分享信息，尝试从 Crust 网关获取文件元数据
-      try {
-        const crustApiResponse = await fetch(`https://gw.crustfiles.app/api/v0/ls?arg=${cid}`);
-        if (crustApiResponse.ok) {
-          const crustData = await crustApiResponse.json();
-          if (crustData.Objects && crustData.Objects.length > 0) {
-            const file = crustData.Objects[0];
-            return new Response(
-              JSON.stringify({
-                success: true,
-                data: {
-                  cid,
-                  filename: file.Name || undefined,
-                  size: file.Size || undefined,
-                  hasPassword: false,
-                },
-              } as ApiResponse),
-              { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-            );
-          }
-        }
-      } catch (crustError) {
-        console.warn("从 Crust 网关获取文件信息失败:", crustError);
-      }
-
-      // 降级方案：返回基本信息（允许通过CID直接访问）
+      // 如果找不到分享信息，返回基本信息（允许通过CID直接访问）
       return new Response(
         JSON.stringify({
           success: true,

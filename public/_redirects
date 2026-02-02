@@ -1,5 +1,3 @@
 # Cloudflare Pages 路由重写规则
 # 将所有 /share/{cid} 请求重写到 /share/placeholder/index.html
 /share/* /share/placeholder/index.html 200
-# 将所有 /download/{cid} 请求重写到 /download/placeholder/index.html
-/download/* /download/placeholder/index.html 200

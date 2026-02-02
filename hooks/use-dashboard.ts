@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { uploadApi, api, gatewayApi, propagationApi } from "@/lib/api";
+import { uploadApi, api, gatewayApi } from "@/lib/api";
 import { CONFIG } from "@/lib/config";
 import { useFileStore, useGatewayStore, useUIStore } from "@/lib/store";
 import { generateId, formatFileSize, copyToClipboard } from "@/lib/utils";
@@ -28,10 +28,6 @@ export function useDashboard() {
     gateways, // 从 store 获取 gateways
     setGateways, // 从 store 获取 setGateways
     customGateways, // 从 store 获取 customGateways
-    savedGateways, // 从 store 获取 savedGateways
-    removeSavedGateway,
-    updateSavedGateway,
-    clearExpiredSavedGateways,
   } = useGatewayStore();
 
   // UI State
@@ -51,9 +47,6 @@ export function useDashboard() {
   const [gatewayModalOpen, setGatewayModalOpen] = useState(false);
   const [isTestingGateways, setIsTestingGateways] = useState(false);
   const [isFetchingPublicGateways, setIsFetchingPublicGateways] = useState(false);
-
-  // AbortController for gateway testing
-  const gatewayTestAbortControllerRef = useRef<AbortController | null>(null);
   const [folderModalOpen, setFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
@@ -81,9 +74,6 @@ export function useDashboard() {
   const [previewFile, setPreviewFile] = useState<FileRecord | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // 传播状态
-  const [propagatingFiles, setPropagatingFiles] = useState<Set<string>>(new Set());
-
   // 使用 ref 来防止重复加载
   const dataLoadedRef = useRef(false);
 
@@ -91,9 +81,6 @@ export function useDashboard() {
   useEffect(() => {
     // 如果数据已经加载过，不再重复加载
     if (dataLoadedRef.current) return;
-
-    // 从缓存加载网关列表（在 try 外部定义，供后续使用）
-    const cachedGateways = gatewayApi.getCachedResults();
 
     const loadData = async () => {
       setIsLoading(true);
@@ -111,7 +98,8 @@ export function useDashboard() {
         const savedAutoRefresh = localStorage.getItem("autoRefresh");
         if (savedAutoRefresh !== null) setAutoRefresh(savedAutoRefresh === "true");
 
-        // 设置网关列表
+        // 从缓存加载网关列表
+        const cachedGateways = gatewayApi.getCachedResults();
         if (cachedGateways && cachedGateways.length > 0) {
           setGateways(cachedGateways);
         } else {
@@ -135,20 +123,9 @@ export function useDashboard() {
       } finally {
         setIsLoading(false);
       }
-
-      // 注：已取消仪表盘自动检测网关功能
-      // 如需手动检测网关，请使用网关管理模态框中的检测按钮
     };
 
     loadData();
-    
-    // 清理函数，组件卸载时取消检测
-    return () => {
-      if (gatewayTestAbortControllerRef.current) {
-        gatewayTestAbortControllerRef.current.abort();
-        gatewayTestAbortControllerRef.current = null;
-      }
-    };
   }, []);
 
   // Handle file upload
@@ -218,19 +195,6 @@ export function useDashboard() {
             await api.saveFile(fileRecord);
             setFiles((prev) => [fileRecord, ...prev]);
             showToast(`文件 ${safeName} 上传成功`, "success");
-
-            // 后台静默传播文件到其他网关
-            if (gateways.length > 0) {
-              propagationApi.backgroundPropagate(result.cid, gateways, {
-                maxGateways: 8,
-                timeout: 15000,
-                onComplete: (propResult) => {
-                  if (propResult.success.length > 0) {
-                    console.log(`文件已传播到 ${propResult.success.length} 个网关`);
-                  }
-                },
-              });
-            }
 
             // 后台快速验证文件完整性
             uploadApi.verifyFile(result.cid).then((verifyResult) => {
@@ -352,84 +316,34 @@ export function useDashboard() {
     // 如果已经在检测中，不重复执行
     if (isTestingGateways) return;
 
-    // 创建新的 AbortController
-    gatewayTestAbortControllerRef.current = new AbortController();
-
     setIsTestingGateways(true);
     try {
       // 如果 gateways 为空，使用默认网关
       const allGateways = gateways.length > 0 ? [...gateways] : [...CONFIG.DEFAULT_GATEWAYS];
-      const results = await gatewayApi.testAllGateways(allGateways, {
-        signal: gatewayTestAbortControllerRef.current.signal,
-      });
+      const results = await gatewayApi.testAllGateways(allGateways);
       setGateways(results);
       gatewayApi.cacheResults(results);
       showToast("网关测试完成", "success");
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        showToast("网关检测已取消", "info");
-      } else {
-        showToast("测试网关失败", "error");
-      }
+    } catch {
+      showToast("测试网关失败", "error");
     } finally {
       setIsTestingGateways(false);
-      gatewayTestAbortControllerRef.current = null;
     }
   }, [gateways, setGateways, showToast, isTestingGateways]);
 
-  // Handle cancel gateway test
-  const handleCancelGatewayTest = useCallback(() => {
-    if (gatewayTestAbortControllerRef.current) {
-      gatewayTestAbortControllerRef.current.abort();
-      gatewayTestAbortControllerRef.current = null;
-    }
-  }, []);
-
-  // Handle refresh gateways - 只重新检测不可用的网关
+  // Handle refresh gateways
   const handleRefreshGateways = useCallback(async () => {
-    // 创建新的 AbortController
-    gatewayTestAbortControllerRef.current = new AbortController();
-
     setIsTestingGateways(true);
     try {
-      // 筛选出不可用的网关进行重新检测
-      const unavailableGateways = gateways.filter(g => !g.available);
-      
-      if (unavailableGateways.length === 0) {
-        showToast("所有网关都可用，无需重新检测", "info");
-        return;
-      }
-
-      showToast(`正在重新检测 ${unavailableGateways.length} 个不可用网关...`, "info");
-
-      // 只检测不可用的网关
-      const results = await gatewayApi.testAllGateways(unavailableGateways, {
-        signal: gatewayTestAbortControllerRef.current.signal,
-      });
-
-      // 合并结果：保留原有的可用网关 + 新检测的网关
-      const availableGateways = gateways.filter(g => g.available);
-      const allGateways = [...availableGateways, ...results];
-      
-      // 去重并排序
-      const uniqueGateways = allGateways.filter(
-        (gateway, index, self) => index === self.findIndex((g) => g.url === gateway.url)
-      );
-
-      setGateways(uniqueGateways);
-      gatewayApi.cacheResults(uniqueGateways);
-      
-      const newlyAvailable = results.filter(g => g.available).length;
-      showToast(`网关刷新完成，${newlyAvailable} 个网关恢复可用`, "success");
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        showToast("网关检测已取消", "info");
-      } else {
-        showToast("刷新网关失败", "error");
-      }
+      // 如果 gateways 为空，使用默认网关
+      const allGateways = gateways.length > 0 ? [...gateways] : [...CONFIG.DEFAULT_GATEWAYS];
+      const results = await gatewayApi.testAllGateways(allGateways);
+      setGateways(results);
+      gatewayApi.cacheResults(results);
+    } catch {
+      showToast("刷新网关失败", "error");
     } finally {
       setIsTestingGateways(false);
-      gatewayTestAbortControllerRef.current = null;
     }
   }, [gateways, setGateways, showToast]);
 
@@ -437,28 +351,35 @@ export function useDashboard() {
   const handleFetchPublicGateways = useCallback(async () => {
     setIsFetchingPublicGateways(true);
     try {
-      // fetchPublicGateways 现在会自动进行快速测试
       const publicGateways = await gatewayApi.fetchPublicGateways();
 
       if (publicGateways.length === 0) {
-        showToast("未获取到可用的公共网关", "info");
+        showToast("未获取到新的公共网关", "info");
         return;
       }
 
-      showToast(`成功获取 ${publicGateways.length} 个可用公共网关`, "success");
+      // 检测新获取的公共网关
+      setIsTestingGateways(true);
+      showToast(`获取到 ${publicGateways.length} 个公共网关，正在检测...`, "info");
+
+      const testedPublicGateways = await gatewayApi.testAllGateways(publicGateways);
 
       // 合并网关，去重
-      const allGateways = [...gateways, ...publicGateways];
+      const allGateways = [...gateways, ...testedPublicGateways];
       const uniqueGateways = allGateways.filter(
         (gateway, index, self) => index === self.findIndex((g) => g.url === gateway.url)
       );
 
       setGateways(uniqueGateways);
       gatewayApi.cacheResults(uniqueGateways);
+
+      const availableCount = testedPublicGateways.filter(g => g.available).length;
+      showToast(`公共网关获取完成，${availableCount} 个可用`, "success");
     } catch {
       showToast("获取公共网关失败", "error");
     } finally {
       setIsFetchingPublicGateways(false);
+      setIsTestingGateways(false);
     }
   }, [gateways, setGateways, showToast]);
 
@@ -530,55 +451,44 @@ export function useDashboard() {
     [gateways, setGateways, showToast]
   );
 
-  // Handle download - 跳转到下载页面
+  // Handle download
   const handleDownload = useCallback(
-    (cid: string, filename: string, fileSize?: number) => {
-      const params = new URLSearchParams();
-      if (filename) {
-        params.set("filename", filename);
+    async (cid: string, filename: string) => {
+      try {
+        const { url } = await gatewayApi.getBestGatewayUrl();
+        const downloadUrl = `${url}${cid}?filename=${encodeURIComponent(filename)}&download=true`;
+        window.open(downloadUrl, '_blank');
+        showToast(`开始下载 ${filename}`, "success");
+      } catch {
+        showToast(`下载 ${filename} 失败`, "error");
       }
-      if (fileSize) {
-        params.set("size", fileSize.toString());
-      }
-      const queryString = params.toString();
-      const downloadUrl = `/download/${cid}${queryString ? `?${queryString}` : ""}`;
-      window.open(downloadUrl, '_blank');
     },
-    []
+    [showToast]
   );
 
-  // Handle download file record - 跳转到下载页面
+  // Handle download file record
   const handleDownloadFile = useCallback(
-    (file: FileRecord) => {
-      const params = new URLSearchParams();
-      if (file.name) {
-        params.set("filename", file.name);
+    async (file: FileRecord) => {
+      try {
+        const { url } = await gatewayApi.getBestGatewayUrl();
+        const downloadUrl = `${url}${file.cid}?filename=${encodeURIComponent(file.name)}&download=true`;
+        window.open(downloadUrl, '_blank');
+        showToast(`开始下载 ${file.name}`, "success");
+      } catch {
+        showToast(`下载 ${file.name} 失败`, "error");
       }
-      if (file.size) {
-        params.set("size", file.size.toString());
-      }
-      const queryString = params.toString();
-      const downloadUrl = `/download/${file.cid}${queryString ? `?${queryString}` : ""}`;
-      window.open(downloadUrl, '_blank');
     },
-    []
+    [showToast]
   );
 
-  // Handle download with gateway - 跳转到下载页面
+  // Handle download with gateway
   const handleDownloadWithGateway = useCallback(
-    (cid: string, filename: string, gateway: any, fileSize?: number) => {
-      const params = new URLSearchParams();
-      if (filename) {
-        params.set("filename", filename);
-      }
-      if (fileSize) {
-        params.set("size", fileSize.toString());
-      }
-      const queryString = params.toString();
-      const downloadUrl = `/download/${cid}${queryString ? `?${queryString}` : ""}`;
+    (cid: string, filename: string, gateway: any) => {
+      const downloadUrl = `${gateway.url}${cid}?filename=${encodeURIComponent(filename)}&download=true`;
       window.open(downloadUrl, '_blank');
+      showToast(`使用 ${gateway.name} 下载 ${filename}`, "success");
     },
-    []
+    [showToast]
   );
 
   // Handle create folder
@@ -671,9 +581,7 @@ export function useDashboard() {
 
     setIsDetectingCid(true);
     try {
-      // 传入用户配置的所有网关进行检测，提高检测成功率
-      const allGateways = gateways.length > 0 ? gateways : CONFIG.DEFAULT_GATEWAYS;
-      const metadata = await api.fetchCidInfo(cid, allGateways);
+      const metadata = await api.fetchCidInfo(cid);
       const metadataWithCid: typeof detectedCidInfo = metadata 
         ? { ...metadata, cid }
         : { cid, name: "", size: 0, isDirectory: false, valid: false, error: "无法获取文件信息" };
@@ -706,7 +614,7 @@ export function useDashboard() {
     } finally {
       setIsDetectingCid(false);
     }
-  }, [newCidName, newCidSize, showToast, gateways]);
+  }, [newCidName, newCidSize, showToast]);
 
   // Handle add CID
   const handleAddCid = useCallback(async () => {
@@ -727,9 +635,7 @@ export function useDashboard() {
       if (!metadata || metadata.cid !== newCid.trim()) {
         setIsDetectingCid(true);
         try {
-          // 传入用户配置的所有网关进行检测，提高检测成功率
-          const allGateways = gateways.length > 0 ? gateways : CONFIG.DEFAULT_GATEWAYS;
-          const fetchedMetadata = await api.fetchCidInfo(newCid, allGateways);
+          const fetchedMetadata = await api.fetchCidInfo(newCid);
           if (fetchedMetadata) {
             metadata = { ...fetchedMetadata, cid: newCid.trim() };
             setDetectedCidInfo(metadata);
@@ -771,8 +677,8 @@ export function useDashboard() {
       };
 
       await api.saveFile(fileRecord);
-      // 使用函数式更新，避免依赖外部的 files 数组
-      setFiles((prev) => [fileRecord, ...prev]);
+      const updatedFiles = [fileRecord, ...files];
+      setFiles(updatedFiles);
       
       // 重置状态
       setAddCidModalOpen(false);
@@ -786,7 +692,7 @@ export function useDashboard() {
     } finally {
       setIsAddingCid(false);
     }
-  }, [currentFolderId, newCid, newCidName, newCidSize, showToast, detectedCidInfo]);
+  }, [currentFolderId, newCid, newCidName, newCidSize, files, showToast, detectedCidInfo]);
 
   // Handle toggle selection
   const handleToggleSelection = useCallback(
@@ -867,66 +773,6 @@ export function useDashboard() {
     setSelectedFiles([]);
   }, [selectedFiles.length, showToast]);
 
-  // Handle propagate file to gateways
-  const handlePropagateFile = useCallback(async (file: FileRecord, propagateToAll: boolean = false) => {
-    if (propagatingFiles.has(String(file.id))) return;
-
-    // 使用所有网关进行传播，不仅限于当前可用的网关
-    // 合并默认网关和扩展网关，确保传播到所有可能的网关
-    const allGateways = gateways.length > 0 
-      ? gateways 
-      : [...CONFIG.DEFAULT_GATEWAYS, ...CONFIG.EXTENDED_GATEWAYS];
-    
-    if (allGateways.length === 0) {
-      showToast("没有可传播的网关", "error");
-      return;
-    }
-
-    setPropagatingFiles(prev => new Set(prev).add(String(file.id)));
-    
-    // 始终传播到所有网关，不再限制为10个
-    showToast(`开始传播文件到所有 ${allGateways.length} 个网关...`, "info");
-
-    try {
-      // 始终使用 propagateToAllGateways 传播到所有网关
-      const result = await propagationApi.propagateToAllGateways(file.cid, allGateways, {
-        timeout: 30000,
-        onProgress: (gateway, status, error) => {
-          console.log(`[Propagation] ${gateway.name}: ${status}${error ? ` (${error})` : ''}`);
-        },
-      });
-
-      console.log(`[Propagation] Result for ${file.cid.slice(0, 16)}...:`, {
-        success: result.success.length,
-        failed: result.failed.length,
-        total: result.total,
-      });
-
-      if (result.success.length > 0) {
-        const successRate = Math.round((result.success.length / result.total) * 100);
-        showToast(`传播完成: ${result.success.length}/${result.total} 成功 (${successRate}%)`, "success");
-      } else {
-        // 分析失败原因
-        const errorTypes = new Map<string, number>();
-        result.errors.forEach((error) => {
-          errorTypes.set(error, (errorTypes.get(error) || 0) + 1);
-        });
-        const mainError = Array.from(errorTypes.entries())
-          .sort((a, b) => b[1] - a[1])[0];
-        showToast(`传播失败: ${result.failed.length} 个网关不可用${mainError ? ` (主要原因: ${mainError[0]})` : ''}`, "error");
-      }
-    } catch (error) {
-      console.error(`[Propagation] Error for ${file.cid.slice(0, 16)}...:`, error);
-      showToast("传播失败: " + (error instanceof Error ? error.message : "未知错误"), "error");
-    } finally {
-      setPropagatingFiles(prev => {
-        const next = new Set(prev);
-        next.delete(String(file.id));
-        return next;
-      });
-    }
-  }, [gateways, propagatingFiles, showToast]);
-
   return {
     // UI State
     searchQuery, setSearchQuery,
@@ -937,13 +783,10 @@ export function useDashboard() {
 
     // Data
     files, folders, totalSize,
-    gateways, customGateways, savedGateways,
+    gateways, customGateways,
 
     // Upload
     isUploading, uploadProgress,
-
-    // Propagation
-    propagatingFiles,
 
     // Modal States
     gatewayModalOpen, setGatewayModalOpen,
@@ -978,7 +821,6 @@ export function useDashboard() {
     handlePreview,
     handleClosePreview,
     handleTestGateways,
-    handleCancelGatewayTest,
     handleRefreshGateways,
     handleFetchPublicGateways,
     handleTestSingleGateway,
@@ -999,10 +841,5 @@ export function useDashboard() {
     handleBatchMove,
     handleBatchDelete,
     handleBatchCopy,
-    handlePropagateFile,
-    // Saved Gateway Handlers
-    removeSavedGateway,
-    updateSavedGateway,
-    clearExpiredSavedGateways,
   };
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Cloud, Copy, Check, Download, Folder, Trash2, ChevronDown, Globe, Pencil, Radio } from "lucide-react";
+import { Cloud, Copy, Check, Download, Folder, Trash2, ChevronDown, Globe, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { FileRecord, Gateway } from "@/types";
@@ -14,7 +14,6 @@ interface FileListProps {
   isLoading: boolean;
   copiedId: string | number | null;
   selectedFiles: string[];
-  propagatingFiles?: Set<string>;
   onCopyCid: (cid: string, fileId: string | number) => void;
   onDownload: (cid: string, filename: string) => void;
   onDownloadWithGateway: (cid: string, filename: string, gateway: Gateway) => void;
@@ -25,7 +24,6 @@ interface FileListProps {
   onRename?: (file: FileRecord) => void;
   onToggleSelection?: (fileId: string) => void;
   onSelectAll?: () => void;
-  onPropagate?: (file: FileRecord, propagateToAll?: boolean) => void;
   gateways?: Gateway[];
 }
 
@@ -35,7 +33,6 @@ export function FileList({
   isLoading,
   copiedId,
   selectedFiles,
-  propagatingFiles = new Set(),
   onCopyCid,
   onDownload,
   onDownloadWithGateway,
@@ -46,7 +43,6 @@ export function FileList({
   onRename,
   onToggleSelection,
   onSelectAll,
-  onPropagate,
   gateways = [],
 }: FileListProps) {
   const [openGatewayMenuId, setOpenGatewayMenuId] = useState<string | number | null>(null);
@@ -258,32 +254,6 @@ export function FileList({
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <div className="flex items-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-blue-500 rounded-r-none"
-                        onClick={() => onPropagate?.(file, false)}
-                        disabled={propagatingFiles.has(String(file.id))}
-                        title="智能传播到优选网关"
-                      >
-                        {propagatingFiles.has(String(file.id)) ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-                        ) : (
-                          <Radio className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-blue-500 rounded-l-none border-l border-blue-200 px-1"
-                        onClick={() => onPropagate?.(file, true)}
-                        disabled={propagatingFiles.has(String(file.id))}
-                        title="传播到所有网关"
-                      >
-                        <span className="text-xs font-bold">ALL</span>
-                      </Button>
-                    </div>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -448,38 +418,6 @@ export function FileList({
             >
               <Pencil className="h-3 w-3" />
             </Button>
-            <div className="flex items-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 bg-white/80 text-blue-500 rounded-r-none"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPropagate?.(file, false);
-                }}
-                disabled={propagatingFiles.has(String(file.id))}
-                title="智能传播到优选网关"
-              >
-                {propagatingFiles.has(String(file.id)) ? (
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-                ) : (
-                  <Radio className="h-3 w-3" />
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 bg-white/80 text-blue-500 rounded-l-none border-l border-blue-200 px-0.5"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPropagate?.(file, true);
-                }}
-                disabled={propagatingFiles.has(String(file.id))}
-                title="传播到所有网关"
-              >
-                <span className="text-[10px] font-bold">ALL</span>
-              </Button>
-            </div>
             <Button
               variant="ghost"
               size="icon"

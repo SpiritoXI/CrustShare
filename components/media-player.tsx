@@ -21,17 +21,10 @@ import {
   SignalMedium,
   SignalLow,
   ChevronUp,
-  Zap,
-  Wifi,
-  WifiOff,
-  Gauge,
-  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { getMediaMimeType, isVideoFile, isAudioFile } from "@/lib/utils";
-import { gatewayApi } from "@/lib/api";
-import { useStreamingOptimizer, type PreloadStrategy } from "@/hooks/use-streaming-optimizer";
 import type { Gateway } from "@/types";
 
 interface MediaPlayerProps {
@@ -52,58 +45,25 @@ interface PlayerState {
   playbackRate: number;
 }
 
-// 缓冲区健康度计算
-function calculateBufferHealth(buffered: number, currentTime: number, duration: number): number {
-  if (!duration || duration === 0) return 0;
-  const bufferedAhead = buffered - currentTime;
-  const maxBuffer = Math.min(30, duration * 0.3); // 最大30秒或30%时长
-  return Math.min(bufferedAhead / maxBuffer, 1);
-}
-
 export function MediaPlayer({ cid, filename, gateways, onGatewaySwitch }: MediaPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hideControlsTimeoutRef = useRef<NodeJS.Timeout>();
   const gatewayMenuRef = useRef<HTMLDivElement>(null);
-  const settingsMenuRef = useRef<HTMLDivElement>(null);
-  const downloadSpeedRef = useRef<number>(0);
-  const lastDownloadCheckRef = useRef<number>(0);
 
   const [currentGatewayIndex, setCurrentGatewayIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(true);
   const [showGatewayMenu, setShowGatewayMenu] = useState(false);
-  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [availableGateways, setAvailableGateways] = useState<Gateway[]>([]);
-  const [isAutoSelecting, setIsAutoSelecting] = useState(false);
-  const [fastestGateway, setFastestGateway] = useState<Gateway | null>(null);
-  const [currentBitrate, setCurrentBitrate] = useState(4000);
-  const [bitrateSwitchInfo, setBitrateSwitchInfo] = useState<string | null>(null);
 
-  // 使用流媒体优化 hook
-  const {
-    networkStatus,
-    networkQuality,
-    preloadConfig,
-    preloadStrategy,
-    recommendedBitrate,
-    currentBitrateLevel,
-    setPreloadStrategy,
-    getPreloadAttribute,
-    adaptBitrate,
-    measureDownloadSpeed,
-  } = useStreamingOptimizer();
-
-  // 点击外部关闭菜单
+  // 点击外部关闭网关选择菜单
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (gatewayMenuRef.current && !gatewayMenuRef.current.contains(event.target as Node)) {
         setShowGatewayMenu(false);
-      }
-      if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target as Node)) {
-        setShowSettingsMenu(false);
       }
     };
 
@@ -137,46 +97,6 @@ export function MediaPlayer({ cid, filename, gateways, onGatewaySwitch }: MediaP
     // 如果没有可用网关，使用所有网关作为备选
     setAvailableGateways(available.length > 0 ? available : gateways);
   }, [gateways]);
-
-  // 根据网络状态更新初始码率
-  useEffect(() => {
-    setCurrentBitrate(recommendedBitrate);
-  }, [recommendedBitrate]);
-
-  // 智能选择最快网关
-  const autoSelectFastestGateway = useCallback(async () => {
-    if (availableGateways.length === 0 || isAutoSelecting) return;
-
-    setIsAutoSelecting(true);
-    try {
-      const result = await gatewayApi.multiGatewayDownload(cid, availableGateways);
-      if (result && result.gateway) {
-        setFastestGateway(result.gateway);
-        // 找到最快网关在列表中的索引
-        const index = availableGateways.findIndex(g => g.url === result.gateway.url);
-        if (index !== -1 && index !== currentGatewayIndex) {
-          setCurrentGatewayIndex(index);
-          // 触发媒体重新加载
-          const media = isVideo ? videoRef.current : audioRef.current;
-          if (media) {
-            media.load();
-          }
-          onGatewaySwitch?.(result.gateway);
-        }
-      }
-    } catch {
-      console.error("自动选择最快网关失败");
-    } finally {
-      setIsAutoSelecting(false);
-    }
-  }, [availableGateways, cid, currentGatewayIndex, isAutoSelecting, isVideo, onGatewaySwitch]);
-
-  // 组件挂载时智能选择最快网关
-  useEffect(() => {
-    if (availableGateways.length > 0 && !fastestGateway) {
-      autoSelectFastestGateway();
-    }
-  }, [availableGateways, fastestGateway, autoSelectFastestGateway]);
 
   // 获取当前媒体URL
   const getCurrentMediaUrl = useCallback(() => {
@@ -327,53 +247,6 @@ export function MediaPlayer({ cid, filename, gateways, onGatewaySwitch }: MediaP
     setPlayerState((prev) => ({ ...prev, playbackRate: nextRate }));
   }, [playerState.playbackRate, mediaRef]);
 
-  // 自适应码率监测
-  const checkAdaptiveBitrate = useCallback(async () => {
-    const media = mediaRef.current;
-    if (!media || !isVideo) return;
-
-    // 计算缓冲区健康度
-    const bufferHealth = calculateBufferHealth(
-      playerState.buffered,
-      playerState.currentTime,
-      playerState.duration
-    );
-
-    // 定期测量下载速度
-    const now = Date.now();
-    if (now - lastDownloadCheckRef.current > 10000) { // 每10秒测量一次
-      lastDownloadCheckRef.current = now;
-      const currentUrl = getCurrentMediaUrl();
-      if (currentUrl) {
-        const speed = await measureDownloadSpeed(currentUrl);
-        downloadSpeedRef.current = speed;
-      }
-    }
-
-    // 自适应码率调整
-    const result = adaptBitrate(
-      bufferHealth,
-      downloadSpeedRef.current,
-      currentBitrate
-    );
-
-    if (result.shouldSwitch && result.newBitrate !== currentBitrate) {
-      setCurrentBitrate(result.newBitrate);
-      setBitrateSwitchInfo(result.reason);
-      
-      // 3秒后清除提示
-      setTimeout(() => setBitrateSwitchInfo(null), 3000);
-    }
-  }, [playerState.buffered, playerState.currentTime, playerState.duration, currentBitrate, adaptBitrate, measureDownloadSpeed, isVideo]);
-
-  // 定期监测自适应码率
-  useEffect(() => {
-    if (!isVideo || !preloadConfig.adaptiveBitrate) return;
-
-    const intervalId = setInterval(checkAdaptiveBitrate, 5000);
-    return () => clearInterval(intervalId);
-  }, [checkAdaptiveBitrate, isVideo, preloadConfig.adaptiveBitrate]);
-
   // 媒体事件监听
   useEffect(() => {
     const media = mediaRef.current;
@@ -387,16 +260,6 @@ export function MediaPlayer({ cid, filename, gateways, onGatewaySwitch }: MediaP
       }));
     };
 
-    const handleProgress = () => {
-      // 更新缓冲进度
-      if (media.buffered.length > 0) {
-        setPlayerState((prev) => ({
-          ...prev,
-          buffered: media.buffered.end(media.buffered.length - 1),
-        }));
-      }
-    };
-
     const handleLoadedMetadata = () => {
       setPlayerState((prev) => ({ ...prev, duration: media.duration }));
       setIsLoading(false);
@@ -406,17 +269,8 @@ export function MediaPlayer({ cid, filename, gateways, onGatewaySwitch }: MediaP
       setIsLoading(false);
     };
 
-    const handleCanPlayThrough = () => {
-      // 可以流畅播放，停止加载提示
-      setIsLoading(false);
-    };
-
     const handleWaiting = () => {
       setIsLoading(true);
-      // 网络卡顿，触发码率调整检查
-      if (isVideo && preloadConfig.adaptiveBitrate) {
-        checkAdaptiveBitrate();
-      }
     };
 
     const handlePlaying = () => {
@@ -439,10 +293,8 @@ export function MediaPlayer({ cid, filename, gateways, onGatewaySwitch }: MediaP
     };
 
     media.addEventListener("timeupdate", handleTimeUpdate);
-    media.addEventListener("progress", handleProgress);
     media.addEventListener("loadedmetadata", handleLoadedMetadata);
     media.addEventListener("canplay", handleCanPlay);
-    media.addEventListener("canplaythrough", handleCanPlayThrough);
     media.addEventListener("waiting", handleWaiting);
     media.addEventListener("playing", handlePlaying);
     media.addEventListener("pause", handlePause);
@@ -451,17 +303,15 @@ export function MediaPlayer({ cid, filename, gateways, onGatewaySwitch }: MediaP
 
     return () => {
       media.removeEventListener("timeupdate", handleTimeUpdate);
-      media.removeEventListener("progress", handleProgress);
       media.removeEventListener("loadedmetadata", handleLoadedMetadata);
       media.removeEventListener("canplay", handleCanPlay);
-      media.removeEventListener("canplaythrough", handleCanPlayThrough);
       media.removeEventListener("waiting", handleWaiting);
       media.removeEventListener("playing", handlePlaying);
       media.removeEventListener("pause", handlePause);
       media.removeEventListener("ended", handleEnded);
       media.removeEventListener("error", handleError);
     };
-  }, [mediaRef, switchToNextGateway, checkAdaptiveBitrate, isVideo, preloadConfig.adaptiveBitrate]);
+  }, [mediaRef, switchToNextGateway]);
 
   // 自动隐藏控制栏
   const handleMouseMove = useCallback(() => {
@@ -527,17 +377,15 @@ export function MediaPlayer({ cid, filename, gateways, onGatewaySwitch }: MediaP
               <AlertCircle className="h-4 w-4" />
               <span>{error}</span>
             </div>
-            {availableGateways.length > 1 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={switchToNextGateway}
-                className="text-red-400 hover:text-red-300"
-              >
-                <RefreshCw className="h-4 w-4 mr-1" />
-                切换网关
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={switchToNextGateway}
+              className="text-red-400 hover:text-red-300"
+            >
+              <RefreshCw className="h-4 w-4 mr-1" />
+              切换网关
+            </Button>
           </div>
         )}
 
@@ -688,33 +536,13 @@ export function MediaPlayer({ cid, filename, gateways, onGatewaySwitch }: MediaP
                         ))}
                       </div>
                       {availableGateways.length > 1 && (
-                        <div className="p-2 border-t border-slate-700 space-y-1">
-                          <button
-                            onClick={() => {
-                              autoSelectFastestGateway();
-                              setShowGatewayMenu(false);
-                            }}
-                            disabled={isAutoSelecting}
-                            className="w-full px-3 py-1.5 text-xs text-yellow-300 hover:text-yellow-200 hover:bg-slate-700 rounded transition-colors flex items-center justify-center space-x-1 disabled:opacity-50"
-                          >
-                            {isAutoSelecting ? (
-                              <>
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                <span>智能选择中...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Zap className="h-3 w-3" />
-                                <span>智能选择最快</span>
-                              </>
-                            )}
-                          </button>
+                        <div className="p-2 border-t border-slate-700">
                           <button
                             onClick={switchToNextGateway}
                             className="w-full px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors flex items-center justify-center space-x-1"
                           >
                             <RefreshCw className="h-3 w-3" />
-                            <span>切换下一个</span>
+                            <span>自动切换下一个</span>
                           </button>
                         </div>
                       )}
@@ -729,7 +557,7 @@ export function MediaPlayer({ cid, filename, gateways, onGatewaySwitch }: MediaP
         <audio
           ref={audioRef}
           src={currentUrl || undefined}
-          preload={getPreloadAttribute()}
+          preload="metadata"
           crossOrigin="anonymous"
         />
       </div>
@@ -748,7 +576,7 @@ export function MediaPlayer({ cid, filename, gateways, onGatewaySwitch }: MediaP
         ref={videoRef}
         src={currentUrl || undefined}
         className="w-full aspect-video"
-        preload={getPreloadAttribute()}
+        preload="metadata"
         crossOrigin="anonymous"
         playsInline
         onClick={togglePlay}
@@ -780,11 +608,9 @@ export function MediaPlayer({ cid, filename, gateways, onGatewaySwitch }: MediaP
                 <RefreshCw className="h-4 w-4 mr-1" />
                 重试
               </Button>
-              {availableGateways.length > 1 && (
-                <Button variant="default" size="sm" onClick={switchToNextGateway}>
-                  切换网关
-                </Button>
-              )}
+              <Button variant="default" size="sm" onClick={switchToNextGateway}>
+                切换网关
+              </Button>
             </div>
           </div>
         </div>
@@ -801,217 +627,81 @@ export function MediaPlayer({ cid, filename, gateways, onGatewaySwitch }: MediaP
           >
             {/* 顶部信息 */}
             <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start">
-              <div className="flex items-start space-x-3">
-                <div>
-                  <h3 className="text-white font-medium truncate max-w-md">{filename}</h3>
-                  {/* 码率切换提示 */}
-                  {bitrateSwitchInfo && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="text-xs text-yellow-400 mt-1 flex items-center"
-                    >
-                      <Gauge className="h-3 w-3 mr-1" />
-                      {bitrateSwitchInfo}
-                    </motion.p>
-                  )}
-                </div>
+              <div>
+                <h3 className="text-white font-medium truncate max-w-md">{filename}</h3>
               </div>
-              
-              <div className="flex items-center space-x-2">
-                {/* 网络状态指示器 */}
-                <div className="flex items-center space-x-1 text-xs text-white/80 bg-black/30 px-2 py-1 rounded">
-                  {networkQuality === "offline" ? (
-                    <WifiOff className="h-3 w-3 text-red-400" />
-                  ) : (
-                    <Wifi className="h-3 w-3 text-green-400" />
-                  )}
-                  <span className="capitalize">{networkQuality}</span>
-                  {networkStatus.downlink > 0 && (
-                    <span className="text-slate-400">({networkStatus.downlink}Mbps)</span>
-                  )}
-                </div>
-
-                {/* 设置按钮 */}
-                <div className="relative" ref={settingsMenuRef}>
+              {/* 网关选择 */}
+              {availableGateways.length > 0 && (
+                <div className="relative" ref={gatewayMenuRef}>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-                    className="text-white hover:bg-white/20 text-xs"
+                    onClick={() => setShowGatewayMenu(!showGatewayMenu)}
+                    className="text-white hover:bg-white/20 text-xs flex items-center space-x-1"
                   >
-                    <Settings className="h-3 w-3" />
+                    <Globe className="h-3 w-3" />
+                    <span>{currentGateway?.name || `网关 ${currentGatewayIndex + 1}`}</span>
+                    {currentGateway?.latency && currentGateway.latency !== Infinity && (
+                      <span className="text-slate-400">({currentGateway.latency}ms)</span>
+                    )}
                   </Button>
 
-                  {/* 设置菜单 */}
+                  {/* 网关选择菜单 */}
                   <AnimatePresence>
-                    {showSettingsMenu && (
+                    {showGatewayMenu && (
                       <motion.div
                         initial={{ opacity: 0, y: -10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute top-full right-0 mt-2 w-56 bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden z-50"
+                        className="absolute top-full right-0 mt-2 w-64 bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden z-50"
                       >
                         <div className="p-2 border-b border-slate-700">
-                          <p className="text-xs text-slate-400 font-medium">播放设置</p>
+                          <p className="text-xs text-slate-400 font-medium">选择网关</p>
                         </div>
-                        
-                        {/* 预加载策略 */}
-                        <div className="p-3 space-y-2">
-                          <p className="text-xs text-slate-300">预加载策略</p>
-                          <div className="grid grid-cols-2 gap-1">
-                            {(["none", "metadata", "auto", "smart"] as PreloadStrategy[]).map((strategy) => (
-                              <button
-                                key={strategy}
-                                onClick={() => {
-                                  setPreloadStrategy(strategy);
-                                  setShowSettingsMenu(false);
-                                }}
-                                className={`px-2 py-1 text-xs rounded transition-colors ${
-                                  preloadStrategy === strategy
-                                    ? "bg-blue-600 text-white"
-                                    : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                                }`}
-                              >
-                                {strategy === "none" && "无"}
-                                {strategy === "metadata" && "元数据"}
-                                {strategy === "auto" && "自动"}
-                                {strategy === "smart" && "智能"}
-                              </button>
-                            ))}
-                          </div>
+                        <div className="max-h-48 overflow-y-auto">
+                          {availableGateways.map((gateway, index) => (
+                            <button
+                              key={gateway.url}
+                              onClick={() => switchToGateway(index)}
+                              className={`w-full px-3 py-2 flex items-center justify-between text-left hover:bg-slate-700 transition-colors ${
+                                index === currentGatewayIndex ? 'bg-slate-700/50' : ''
+                              }`}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <span className="text-lg">{gateway.icon || '🌐'}</span>
+                                <div>
+                                  <p className="text-sm text-white">{gateway.name}</p>
+                                  <p className="text-xs text-slate-400 truncate max-w-[120px]">
+                                    {gateway.url.replace('/ipfs/', '')}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                {getSignalIcon(gateway.latency)}
+                                {index === currentGatewayIndex && (
+                                  <Check className="h-3 w-3 text-blue-400 ml-1" />
+                                )}
+                              </div>
+                            </button>
+                          ))}
                         </div>
-
-                        {/* 当前码率信息 */}
-                        <div className="p-3 border-t border-slate-700 space-y-2">
-                          <p className="text-xs text-slate-300">当前码率</p>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-white">{currentBitrateLevel.name}</span>
-                            <span className="text-xs text-slate-400">{currentBitrateLevel.bitrate}kbps</span>
+                        {availableGateways.length > 1 && (
+                          <div className="p-2 border-t border-slate-700">
+                            <button
+                              onClick={switchToNextGateway}
+                              className="w-full px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors flex items-center justify-center space-x-1"
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                              <span>自动切换下一个</span>
+                            </button>
                           </div>
-                          <div className="text-xs text-slate-500">
-                            推荐: {currentBitrateLevel.width}x{currentBitrateLevel.height}@{currentBitrateLevel.fps}fps
-                          </div>
-                        </div>
-
-                        {/* 网络信息 */}
-                        <div className="p-3 border-t border-slate-700 space-y-1">
-                          <p className="text-xs text-slate-300">网络状态</p>
-                          <div className="text-xs text-slate-400 space-y-1">
-                            <div className="flex justify-between">
-                              <span>延迟:</span>
-                              <span>{networkStatus.rtt}ms</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>类型:</span>
-                              <span>{networkStatus.effectiveType}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>下载速度:</span>
-                              <span>{networkStatus.downlink}Mbps</span>
-                            </div>
-                          </div>
-                        </div>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>
                 </div>
-
-                {/* 网关选择 */}
-                {availableGateways.length > 0 && (
-                  <div className="relative" ref={gatewayMenuRef}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowGatewayMenu(!showGatewayMenu)}
-                      className="text-white hover:bg-white/20 text-xs flex items-center space-x-1"
-                    >
-                      <Globe className="h-3 w-3" />
-                      <span>{currentGateway?.name || `网关 ${currentGatewayIndex + 1}`}</span>
-                      {currentGateway?.latency && currentGateway.latency !== Infinity && (
-                        <span className="text-slate-400">({currentGateway.latency}ms)</span>
-                      )}
-                    </Button>
-
-                    {/* 网关选择菜单 */}
-                    <AnimatePresence>
-                      {showGatewayMenu && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                          transition={{ duration: 0.15 }}
-                          className="absolute top-full right-0 mt-2 w-64 bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden z-50"
-                        >
-                          <div className="p-2 border-b border-slate-700">
-                            <p className="text-xs text-slate-400 font-medium">选择网关</p>
-                          </div>
-                          <div className="max-h-48 overflow-y-auto">
-                            {availableGateways.map((gateway, index) => (
-                              <button
-                                key={gateway.url}
-                                onClick={() => switchToGateway(index)}
-                                className={`w-full px-3 py-2 flex items-center justify-between text-left hover:bg-slate-700 transition-colors ${
-                                  index === currentGatewayIndex ? 'bg-slate-700/50' : ''
-                                }`}
-                              >
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-lg">{gateway.icon || '🌐'}</span>
-                                  <div>
-                                    <p className="text-sm text-white">{gateway.name}</p>
-                                    <p className="text-xs text-slate-400 truncate max-w-[120px]">
-                                      {gateway.url.replace('/ipfs/', '')}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  {getSignalIcon(gateway.latency)}
-                                  {index === currentGatewayIndex && (
-                                    <Check className="h-3 w-3 text-blue-400 ml-1" />
-                                  )}
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                          {availableGateways.length > 1 && (
-                            <div className="p-2 border-t border-slate-700 space-y-1">
-                              <button
-                                onClick={() => {
-                                  autoSelectFastestGateway();
-                                  setShowGatewayMenu(false);
-                                }}
-                                disabled={isAutoSelecting}
-                                className="w-full px-3 py-1.5 text-xs text-yellow-300 hover:text-yellow-200 hover:bg-slate-700 rounded transition-colors flex items-center justify-center space-x-1 disabled:opacity-50"
-                              >
-                                {isAutoSelecting ? (
-                                  <>
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                    <span>智能选择中...</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Zap className="h-3 w-3" />
-                                    <span>智能选择最快</span>
-                                  </>
-                                )}
-                              </button>
-                              <button
-                                onClick={switchToNextGateway}
-                                className="w-full px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors flex items-center justify-center space-x-1"
-                              >
-                                <RefreshCw className="h-3 w-3" />
-                                <span>切换下一个</span>
-                              </button>
-                            </div>
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
             {/* 中央播放按钮 */}

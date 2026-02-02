@@ -1,7 +1,6 @@
 /**
  * 网关管理 Hook
  * 处理 IPFS 网关的测试、选择和配置
- * 支持保存优质网关本地长期存储，优先检测
  */
 
 "use client";
@@ -10,12 +9,11 @@ import { useState, useCallback, useEffect } from "react";
 import { gatewayApi } from "@/lib/api";
 import { useGatewayStore, useUIStore } from "@/lib/store";
 import { handleError } from "@/lib/error-handler";
-import type { Gateway, SavedGateway } from "@/types";
+import type { Gateway } from "@/types";
 
 export interface GatewayState {
   gateways: Gateway[];
   customGateways: Gateway[];
-  savedGateways: SavedGateway[];
   isTesting: boolean;
   isFetchingPublic: boolean;
   lastTestTime: number | null;
@@ -28,28 +26,20 @@ export interface GatewayOperations {
   removeCustomGateway: (name: string) => void;
   getBestGateway: () => Gateway | null;
   getAvailableGateways: () => Gateway[];
-  // 保存网关管理
-  removeSavedGateway: (name: string) => void;
-  toggleSavedGateway: (name: string) => void;
-  clearExpiredSavedGateways: () => void;
 }
 
 export function useGateway(): GatewayState & GatewayOperations {
-  const {
-    gateways,
-    customGateways,
-    savedGateways,
-    setGateways,
-    addCustomGateway: addToStore,
+  const { 
+    gateways, 
+    customGateways, 
+    setGateways, 
+    addCustomGateway: addToStore, 
     removeCustomGateway: removeFromStore,
-    removeSavedGateway: removeSavedFromStore,
-    updateSavedGateway,
-    clearExpiredSavedGateways: clearExpiredFromStore,
     setIsTesting: setStoreIsTesting,
     setLastTestTime: setStoreLastTestTime
   } = useGatewayStore();
   const { showToast } = useUIStore();
-
+  
   const [isTesting, setIsTesting] = useState(false);
   const [isFetchingPublic, setIsFetchingPublic] = useState(false);
   const [lastTestTime, setLastTestTime] = useState<number | null>(null);
@@ -195,33 +185,9 @@ export function useGateway(): GatewayState & GatewayOperations {
     return [...customGateways, ...gateways].filter(g => g.available);
   }, [gateways, customGateways]);
 
-  // 移除保存的网关
-  const removeSavedGateway = useCallback((name: string) => {
-    removeSavedFromStore(name);
-    showToast("已移除保存的网关", "success");
-  }, [removeSavedFromStore, showToast]);
-
-  // 切换保存网关的启用状态
-  const toggleSavedGateway = useCallback((name: string) => {
-    const gateway = savedGateways.find(g => g.name === name);
-    if (gateway) {
-      updateSavedGateway(name, { enabled: !gateway.enabled });
-      showToast(gateway.enabled ? "已禁用该网关" : "已启用该网关", "success");
-    }
-  }, [savedGateways, updateSavedGateway, showToast]);
-
-  // 清理过期的保存网关
-  const clearExpiredSavedGateways = useCallback(() => {
-    clearExpiredFromStore();
-    showToast("已清理过期网关", "success");
-  }, [clearExpiredFromStore, showToast]);
-
-  // 初始化时自动测试网关（优先检测已保存的网关）
+  // 初始化时自动测试网关
   useEffect(() => {
     const init = async () => {
-      // 清理过期保存网关
-      clearExpiredFromStore();
-
       // 检查缓存
       const cached = gatewayApi.getCachedResults();
       if (cached && cached.length > 0) {
@@ -243,7 +209,7 @@ export function useGateway(): GatewayState & GatewayOperations {
         }
       }
 
-      // 自动测试网关（新逻辑：优先检测已保存的网关）
+      // 自动测试网关
       await testGateways();
     };
 
@@ -255,7 +221,6 @@ export function useGateway(): GatewayState & GatewayOperations {
     // 状态
     gateways,
     customGateways,
-    savedGateways,
     isTesting,
     isFetchingPublic,
     lastTestTime,
@@ -266,9 +231,5 @@ export function useGateway(): GatewayState & GatewayOperations {
     removeCustomGateway,
     getBestGateway,
     getAvailableGateways,
-    // 保存网关管理
-    removeSavedGateway,
-    toggleSavedGateway,
-    clearExpiredSavedGateways,
   };
 }

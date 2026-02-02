@@ -21,11 +21,9 @@ import {
   SignalHigh,
   SignalMedium,
   SignalLow,
-  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isImageFile, getImageMimeType } from "@/lib/utils";
-import { gatewayApi } from "@/lib/api";
 import type { Gateway } from "@/types";
 
 interface ImageViewerProps {
@@ -51,8 +49,6 @@ export function ImageViewer({ cid, filename, gateways, onClose, onDownload }: Im
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showGatewayMenu, setShowGatewayMenu] = useState(false);
-  const [isAutoSelecting, setIsAutoSelecting] = useState(false);
-  const [fastestGateway, setFastestGateway] = useState<Gateway | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const gatewayMenuRef = useRef<HTMLDivElement>(null);
@@ -86,35 +82,6 @@ export function ImageViewer({ cid, filename, gateways, onClose, onDownload }: Im
 
   // 如果没有可用网关，使用所有网关作为备选
   const effectiveGateways = availableGateways.length > 0 ? availableGateways : gateways;
-
-  // 智能选择最快网关
-  const autoSelectFastestGateway = useCallback(async () => {
-    if (effectiveGateways.length === 0 || isAutoSelecting) return;
-
-    setIsAutoSelecting(true);
-    try {
-      const result = await gatewayApi.multiGatewayDownload(cid, effectiveGateways);
-      if (result && result.gateway) {
-        setFastestGateway(result.gateway);
-        // 找到最快网关在列表中的索引
-        const index = effectiveGateways.findIndex(g => g.url === result.gateway.url);
-        if (index !== -1 && index !== currentGatewayIndex) {
-          setCurrentGatewayIndex(index);
-        }
-      }
-    } catch {
-      console.error("自动选择最快网关失败");
-    } finally {
-      setIsAutoSelecting(false);
-    }
-  }, [effectiveGateways, cid, currentGatewayIndex, isAutoSelecting]);
-
-  // 组件挂载时智能选择最快网关
-  useEffect(() => {
-    if (effectiveGateways.length > 0 && !fastestGateway) {
-      autoSelectFastestGateway();
-    }
-  }, [effectiveGateways, fastestGateway, autoSelectFastestGateway]);
 
   // 获取当前图片URL
   const getCurrentImageUrl = useCallback(() => {
@@ -436,11 +403,9 @@ export function ImageViewer({ cid, filename, gateways, onClose, onDownload }: Im
                   <RefreshCw className="h-4 w-4 mr-1" />
                   重试
                 </Button>
-                {effectiveGateways.length > 1 && (
-                  <Button variant="default" size="sm" onClick={switchToNextGateway}>
-                    切换网关
-                  </Button>
-                )}
+                <Button variant="default" size="sm" onClick={switchToNextGateway}>
+                  切换网关
+                </Button>
               </div>
             </div>
           </div>
@@ -535,33 +500,13 @@ export function ImageViewer({ cid, filename, gateways, onClose, onDownload }: Im
                         ))}
                       </div>
                       {effectiveGateways.length > 1 && (
-                        <div className="p-2 border-t border-slate-700 space-y-1">
-                          <button
-                            onClick={() => {
-                              autoSelectFastestGateway();
-                              setShowGatewayMenu(false);
-                            }}
-                            disabled={isAutoSelecting}
-                            className="w-full px-3 py-1.5 text-xs text-yellow-300 hover:text-yellow-200 hover:bg-slate-700 rounded transition-colors flex items-center justify-center space-x-1 disabled:opacity-50"
-                          >
-                            {isAutoSelecting ? (
-                              <>
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                <span>智能选择中...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Zap className="h-3 w-3" />
-                                <span>智能选择最快</span>
-                              </>
-                            )}
-                          </button>
+                        <div className="p-2 border-t border-slate-700">
                           <button
                             onClick={switchToNextGateway}
                             className="w-full px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors flex items-center justify-center space-x-1"
                           >
                             <RefreshCw className="h-3 w-3" />
-                            <span>切换下一个</span>
+                            <span>自动切换下一个</span>
                           </button>
                         </div>
                       )}
@@ -594,11 +539,9 @@ export function ImageThumbnail({ cid, filename, gateways, onClick, className = "
   useEffect(() => {
     const availableGateways = gateways.filter((g) => g.available);
     if (availableGateways.length > 0) {
-      // 智能选择延迟最低的网关
-      const bestGateway = availableGateways.sort(
-        (a, b) => (a.latency || Infinity) - (b.latency || Infinity)
-      )[0];
-      setImageUrl(`${bestGateway.url}${cid}`);
+      // 使用第一个可用网关
+      const gateway = availableGateways[0];
+      setImageUrl(`${gateway.url}${cid}`);
     }
   }, [gateways, cid]);
 
