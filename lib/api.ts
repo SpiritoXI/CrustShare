@@ -1,4 +1,4 @@
-import { CONFIG } from "./config";
+﻿import { CONFIG, API } from "./config";
 import type { FileRecord, Folder, ApiResponse, Gateway } from "@/types";
 import { useAuthStore } from "./store";
 
@@ -49,20 +49,20 @@ async function secureFetch(url: string, options: RequestInit = {}): Promise<Resp
 
 export const api = {
   async getToken(): Promise<string> {
-    const response = await secureFetch(CONFIG.API_GET_TOKEN);
+    const response = await secureFetch(API.GET_TOKEN);
     const data = await response.json();
     return data.data?.token || data.token;
   },
 
   async loadFiles(): Promise<FileRecord[]> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=load_files`);
+    const response = await secureFetch(`${API.DB_PROXY}?action=load_files`);
     const data: ApiResponse<FileRecord[]> = await response.json();
     if (!data.success) throw new Error(data.error || "加载文件失败");
     return data.data || [];
   },
 
   async saveFile(file: FileRecord): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=save_file`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=save_file`, {
       method: "POST",
       body: JSON.stringify(file),
     });
@@ -71,7 +71,7 @@ export const api = {
   },
 
   async updateFile(fileId: string | number, updates: Partial<FileRecord>): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=update_file`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=update_file`, {
       method: "POST",
       body: JSON.stringify({ fileId, updates }),
     });
@@ -80,7 +80,7 @@ export const api = {
   },
 
   async addCid(cid: string, name: string, size: number, folderId: string = "default"): Promise<FileRecord> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=add_cid`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=add_cid`, {
       method: "POST",
       body: JSON.stringify({ cid, name, size, folderId }),
     });
@@ -270,7 +270,7 @@ export const api = {
   },
 
   async deleteFile(fileId: string | number): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=delete_file`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=delete_file`, {
       method: "POST",
       body: JSON.stringify({ fileId }),
     });
@@ -279,7 +279,7 @@ export const api = {
   },
 
   async deleteFiles(fileIds: (string | number)[]): Promise<number> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=delete_files`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=delete_files`, {
       method: "POST",
       body: JSON.stringify({ fileIds }),
     });
@@ -289,7 +289,7 @@ export const api = {
   },
 
   async renameFile(fileId: string | number, newName: string): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=rename_file`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=rename_file`, {
       method: "POST",
       body: JSON.stringify({ fileId, newName }),
     });
@@ -298,7 +298,7 @@ export const api = {
   },
 
   async moveFiles(fileIds: (string | number)[], folderId: string): Promise<number> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=move_files`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=move_files`, {
       method: "POST",
       body: JSON.stringify({ fileIds, folderId }),
     });
@@ -308,7 +308,7 @@ export const api = {
   },
 
   async copyFiles(fileIds: (string | number)[], folderId: string): Promise<number> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=copy_files`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=copy_files`, {
       method: "POST",
       body: JSON.stringify({ fileIds, folderId }),
     });
@@ -318,14 +318,14 @@ export const api = {
   },
 
   async loadFolders(): Promise<Folder[]> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=load_folders`);
+    const response = await secureFetch(`${API.DB_PROXY}?action=load_folders`);
     const data: ApiResponse<Folder[]> = await response.json();
     if (!data.success) throw new Error(data.error || "加载文件夹失败");
     return data.data || [];
   },
 
   async createFolder(name: string, parentId: string | null = null): Promise<Folder> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=create_folder`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=create_folder`, {
       method: "POST",
       body: JSON.stringify({ name, parentId }),
     });
@@ -335,7 +335,7 @@ export const api = {
   },
 
   async renameFolder(folderId: string, newName: string): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=rename_folder`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=rename_folder`, {
       method: "POST",
       body: JSON.stringify({ folderId, newName }),
     });
@@ -344,7 +344,7 @@ export const api = {
   },
 
   async deleteFolder(folderId: string): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=delete_folder`, {
+    const response = await secureFetch(`${API.DB_PROXY}?action=delete_folder`, {
       method: "POST",
       body: JSON.stringify({ folderId }),
     });
@@ -356,7 +356,7 @@ export const api = {
     files: { count: number };
     folders: { count: number };
   }> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=db_stats`);
+    const response = await secureFetch(`${API.DB_PROXY}?action=db_stats`);
     const data: ApiResponse<{
       keys: {
         files: { count: number };
@@ -371,7 +371,7 @@ export const api = {
   },
 
   async checkVerificationStatus(): Promise<FileRecord[]> {
-    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=check_verification_status`);
+    const response = await secureFetch(`${API.DB_PROXY}?action=check_verification_status`);
     const data: ApiResponse<{ failedFiles: FileRecord[] }> = await response.json();
     if (!data.success) throw new Error(data.error || "检查验证状态失败");
     return data.data?.failedFiles || [];
@@ -385,7 +385,7 @@ export const api = {
     createdAt: number;
     hasPassword: boolean;
   }>> {
-    const response = await secureFetch(`${CONFIG.API_SHARE}?list=true`);
+    const response = await secureFetch(`${API.SHARE}?list=true`);
     const data: ApiResponse<Array<{
       cid: string;
       filename?: string;
@@ -399,7 +399,7 @@ export const api = {
   },
 
   async deleteShare(cid: string): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_SHARE}?cid=${cid}`, {
+    const response = await secureFetch(`${API.SHARE}?cid=${cid}`, {
       method: "DELETE",
     });
     const data: ApiResponse = await response.json();
@@ -411,50 +411,102 @@ export const uploadApi = {
   async uploadToCrust(
     file: File,
     token: string,
-    onProgress: (progress: number) => void
+    onProgress: (progress: number) => void,
+    retryCount = 3
   ): Promise<{ cid: string; size: number; hash?: string }> {
     const formData = new FormData();
     formData.append("file", file);
 
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
+    // 上传函数，支持重试
+    const attemptUpload = (attempt: number): Promise<{ cid: string; size: number; hash?: string }> => {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        let lastProgress = 0;
 
-      xhr.upload.addEventListener("progress", (event) => {
-        if (event.lengthComputable) {
-          const progress = Math.round((event.loaded / event.total) * 100);
-          onProgress(progress);
-        }
-      });
-
-      xhr.addEventListener("load", () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            resolve({
-              cid: response.Hash || response.cid,
-              size: response.Size || file.size,
-              hash: response.Hash,
-            });
-          } catch {
-            reject(new Error("解析响应失败"));
+        xhr.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable) {
+            const progress = Math.round((event.loaded / event.total) * 100);
+            lastProgress = progress;
+            onProgress(progress);
           }
-        } else {
-          reject(new Error(`上传失败: ${xhr.statusText}`));
+        });
+
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              resolve({
+                cid: response.Hash || response.cid,
+                size: response.Size || file.size,
+                hash: response.Hash,
+              });
+            } catch {
+              reject(new Error("解析响应失败"));
+            }
+          } else if (xhr.status >= 500 && xhr.status < 600 && attempt < retryCount - 1) {
+            // 服务器错误，可以重试
+            reject(new Error(`服务器错误: ${xhr.status}`));
+          } else {
+            reject(new Error(`上传失败: ${xhr.statusText || xhr.status}`));
+          }
+        });
+
+        xhr.addEventListener("error", () => {
+          if (attempt < retryCount - 1) {
+            reject(new Error("网络错误"));
+          } else {
+            reject(new Error("上传过程中发生错误，已重试多次"));
+          }
+        });
+
+        xhr.addEventListener("abort", () => {
+          reject(new Error("上传已取消"));
+        });
+
+        xhr.addEventListener("timeout", () => {
+          if (attempt < retryCount - 1) {
+            reject(new Error("上传超时"));
+          } else {
+            reject(new Error("上传超时，已重试多次"));
+          }
+        });
+
+        // 设置超时时间（30分钟）
+        xhr.timeout = CONFIG.UPLOAD.TIMEOUT;
+        
+        xhr.open("POST", CONFIG.CRUST.UPLOAD_API);
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        xhr.send(formData);
+      });
+    };
+
+    // 执行上传，带重试逻辑
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt < retryCount; attempt++) {
+      try {
+        // 重置进度
+        onProgress(0);
+        
+        const result = await attemptUpload(attempt);
+        return result;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
+        // 如果是用户取消，直接抛出错误不重试
+        if (lastError.message.includes("取消")) {
+          throw lastError;
         }
-      });
+        
+        // 如果不是最后一次尝试，等待后重试
+        if (attempt < retryCount - 1) {
+          const delay = Math.min(1000 * Math.pow(2, attempt), 10000); // 指数退避，最大10秒
+          console.warn(`上传失败，${delay}ms后重试 (${attempt + 1}/${retryCount - 1}): ${lastError.message}`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
 
-      xhr.addEventListener("error", () => {
-        reject(new Error("上传过程中发生错误"));
-      });
-
-      xhr.addEventListener("abort", () => {
-        reject(new Error("上传已取消"));
-      });
-
-      xhr.open("POST", CONFIG.CRUST_UPLOAD_API);
-      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-      xhr.send(formData);
-    });
+    throw lastError || new Error("上传失败");
   },
 
   async verifyFile(cid: string): Promise<{
@@ -789,14 +841,40 @@ export const gatewayApi = {
   },
 
   cacheResults(gateways: Gateway[]): void {
-    localStorage.setItem(
-      CONFIG.GATEWAY_TEST.CHECK_CACHE_KEY,
-      JSON.stringify({
+    try {
+      // 限制缓存的网关数量，避免超出 localStorage 限制
+      const maxGatewaysToCache = 50;
+      const gatewaysToCache = gateways.slice(0, maxGatewaysToCache);
+      
+      const cacheData = {
         version: CONFIG.GATEWAY_TEST.CACHE_VERSION,
         timestamp: Date.now(),
-        gateways,
-      })
-    );
+        gateways: gatewaysToCache,
+      };
+      
+      const cacheString = JSON.stringify(cacheData);
+      
+      // 检查缓存大小，如果超过 4MB 则不缓存
+      const sizeInBytes = new Blob([cacheString]).size;
+      const maxSize = 4 * 1024 * 1024; // 4MB
+      
+      if (sizeInBytes > maxSize) {
+        console.warn(`网关缓存数据过大(${(sizeInBytes / 1024 / 1024).toFixed(2)}MB)，跳过缓存`);
+        return;
+      }
+      
+      localStorage.setItem(CONFIG.GATEWAY_TEST.CHECK_CACHE_KEY, cacheString);
+    } catch (error) {
+      // 如果存储失败（如超出配额），清理旧缓存
+      console.warn("缓存网关结果失败，清理旧缓存:", error);
+      try {
+        localStorage.removeItem(CONFIG.GATEWAY_TEST.CHECK_CACHE_KEY);
+        // 同时清理健康度历史缓存
+        localStorage.removeItem(CONFIG.GATEWAY_HEALTH.HEALTH_CACHE_KEY);
+      } catch {
+        // 忽略清理错误
+      }
+    }
   },
 
   // 自动检测网关（带缓存机制）
@@ -900,8 +978,12 @@ export const gatewayApi = {
   // 保存健康度历史
   saveHealthHistory(gateways: Gateway[]): void {
     try {
+      // 只保存前30个网关的健康度历史，避免超出存储限制
+      const maxHistoryEntries = 30;
+      const gatewaysToSave = gateways.slice(0, maxHistoryEntries);
+      
       const history: Record<string, Partial<Gateway>> = {};
-      gateways.forEach((g) => {
+      gatewaysToSave.forEach((g) => {
         history[g.name] = {
           healthScore: g.healthScore,
           failureCount: g.failureCount,
@@ -911,15 +993,29 @@ export const gatewayApi = {
         };
       });
 
-      localStorage.setItem(
-        CONFIG.GATEWAY_HEALTH.HEALTH_CACHE_KEY,
-        JSON.stringify({
-          timestamp: Date.now(),
-          history,
-        })
-      );
-    } catch {
-      // 忽略存储错误
+      const historyString = JSON.stringify({
+        timestamp: Date.now(),
+        history,
+      });
+      
+      // 检查存储大小
+      const sizeInBytes = new Blob([historyString]).size;
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      
+      if (sizeInBytes > maxSize) {
+        console.warn(`健康度历史数据过大(${(sizeInBytes / 1024).toFixed(2)}KB)，跳过保存`);
+        return;
+      }
+
+      localStorage.setItem(CONFIG.GATEWAY_HEALTH.HEALTH_CACHE_KEY, historyString);
+    } catch (error) {
+      // 如果存储失败，清理旧数据
+      console.warn("保存健康度历史失败:", error);
+      try {
+        localStorage.removeItem(CONFIG.GATEWAY_HEALTH.HEALTH_CACHE_KEY);
+      } catch {
+        // 忽略清理错误
+      }
     }
   },
 
@@ -1161,7 +1257,7 @@ export const shareApi = {
     expiry?: string;
   } | null> {
     try {
-      const response = await fetch(`${CONFIG.API_SHARE}?cid=${encodeURIComponent(cid)}`);
+      const response = await fetch(`${API.SHARE}?cid=${encodeURIComponent(cid)}`);
       const data: ApiResponse<{
         cid: string;
         filename?: string;
@@ -1187,7 +1283,7 @@ export const shareApi = {
     password?: string;
     expiry?: string;
   }): Promise<void> {
-    const response = await secureFetch(CONFIG.API_SHARE, {
+    const response = await secureFetch(API.SHARE, {
       method: "POST",
       body: JSON.stringify(shareInfo),
     });
@@ -1204,7 +1300,7 @@ export const shareApi = {
     expiry?: string;
   } | null> {
     try {
-      const response = await fetch(CONFIG.API_VERIFY_SHARE_PASSWORD, {
+      const response = await fetch(API.VERIFY_SHARE_PASSWORD, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cid, password }),
@@ -1228,7 +1324,7 @@ export const shareApi = {
 
   // 删除分享（需要认证）
   async deleteShare(cid: string): Promise<void> {
-    const response = await secureFetch(`${CONFIG.API_SHARE}?cid=${encodeURIComponent(cid)}`, {
+    const response = await secureFetch(`${API.SHARE}?cid=${encodeURIComponent(cid)}`, {
       method: "DELETE",
     });
     const data: ApiResponse = await response.json();

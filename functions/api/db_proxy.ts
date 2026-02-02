@@ -3,31 +3,135 @@ import type { FileRecord, Folder, ApiResponse, Env, Context } from "../../types"
 const FILES_KEY = "my_crust_files";
 const FOLDERS_KEY = "cc_folders";
 
+// 内存缓存作为 Redis 降级方案
+const memoryCache = new Map<string, unknown>();
+let useMemoryCache = false;
+
 async function upstashCommand<T = unknown>(
   upstashUrl: string,
   upstashToken: string,
-  command: (string | number)[]
+  command: (string | number)[],
+  retryCount = 3
 ): Promise<T> {
   if (!upstashUrl || !upstashToken) {
     throw new Error("Upstash配置缺失");
   }
 
-  const response = await fetch(upstashUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${upstashToken}`,
-    },
-    body: JSON.stringify(command),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok || data.error) {
-    throw new Error(data.error || `Upstash错误: ${response.status}`);
+  // 如果已经切换到内存缓存模式，直接操作内存
+  if (useMemoryCache) {
+    return memoryCacheCommand<T>(command);
   }
 
-  return data.result;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < retryCount; attempt++) {
+    try {
+      const response = await fetch(upstashUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${upstashToken}`,
+        },
+        body: JSON.stringify(command),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || `Upstash错误: ${response.status}`);
+      }
+
+      return data.result;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      // 如果不是最后一次尝试，等待后重试
+      if (attempt < retryCount - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+      }
+    }
+  }
+
+  // 所有重试都失败后，切换到内存缓存模式
+  console.warn(`Redis连接失败，切换到内存缓存模式: ${lastError?.message}`);
+  useMemoryCache = true;
+  return memoryCacheCommand<T>(command);
+}
+
+// 内存缓存命令处理
+function memoryCacheCommand<T>(command: (string | number)[]): Promise<T> {
+  const cmd = String(command[0]).toUpperCase();
+  const key = String(command[1]);
+
+  return new Promise((resolve, reject) => {
+    switch (cmd) {
+      case "LPUSH": {
+        const value = String(command[2]);
+        const existing = (memoryCache.get(key) as string[]) || [];
+        existing.unshift(value);
+        memoryCache.set(key, existing);
+        resolve(existing.length as T);
+        break;
+      }
+      case "LRANGE": {
+        const list = (memoryCache.get(key) as string[]) || [];
+        resolve(list as T);
+        break;
+      }
+      case "LREM": {
+        const value = String(command[3]);
+        const existing = (memoryCache.get(key) as string[]) || [];
+        const filtered = existing.filter(item => item !== value);
+        memoryCache.set(key, filtered);
+        resolve(filtered.length as T);
+        break;
+      }
+      case "HSET": {
+        const field = String(command[2]);
+        const value = String(command[3]);
+        const existing = (memoryCache.get(key) as Record<string, string>) || {};
+        existing[field] = value;
+        memoryCache.set(key, existing);
+        resolve(1 as T);
+        break;
+      }
+      case "HGET": {
+        const field = String(command[2]);
+        const hash = (memoryCache.get(key) as Record<string, string>) || {};
+        resolve((hash[field] || null) as T);
+        break;
+      }
+      case "HGETALL": {
+        const hash = (memoryCache.get(key) as Record<string, string>) || {};
+        const result: string[] = [];
+        Object.entries(hash).forEach(([k, v]) => {
+          result.push(k, v);
+        });
+        resolve(result as T);
+        break;
+      }
+      case "HDEL": {
+        const field = String(command[2]);
+        const hash = (memoryCache.get(key) as Record<string, string>) || {};
+        delete hash[field];
+        memoryCache.set(key, hash);
+        resolve(1 as T);
+        break;
+      }
+      case "HLEN": {
+        const hash = (memoryCache.get(key) as Record<string, string>) || {};
+        resolve(Object.keys(hash).length as T);
+        break;
+      }
+      case "LLEN": {
+        const list = (memoryCache.get(key) as string[]) || [];
+        resolve(list.length as T);
+        break;
+      }
+      default:
+        reject(new Error(`不支持的命令: ${cmd}`));
+    }
+  });
 }
 
 /**

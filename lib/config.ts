@@ -59,6 +59,9 @@ export const DEFAULT_GATEWAYS: Gateway[] = [
   { name: 'NFT Storage', url: 'https://nftstorage.link/ipfs/', icon: '🖼️', priority: 11, region: 'INTL' },
   { name: 'Infura', url: 'https://ipfs.infura.io/ipfs/', icon: '🔮', priority: 12, region: 'INTL' },
   { name: 'Crust', url: 'https://crustwebsites.net/ipfs/', icon: '🔸', priority: 13, region: 'INTL' },
+  { name: 'IPFS.io', url: 'https://ipfs.io/ipfs/', icon: '🧊', priority: 14, region: 'INTL' },
+  { name: 'Fleek', url: 'https://ipfs.fleek.co/ipfs/', icon: '⚡', priority: 15, region: 'INTL' },
+  { name: 'IPFS.io Gateway', url: 'https://gateway.ipfs.io/ipfs/', icon: '🌐', priority: 16, region: 'INTL' },
 ];
 
 /**
@@ -161,4 +164,5 @@ export const CONFIG = {
   INTEGRITY_CHECK,
   SECURITY,
   UI,
+  CRUST,
 } as const;

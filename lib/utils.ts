@@ -8,9 +8,12 @@ export function cn(...inputs: ClassValue[]) {
 export function formatFileSize(bytes: number): string {
   // 处理非数字、NaN、负数等异常情况
   const numBytes = Number(bytes);
-  if (!isFinite(numBytes) || numBytes <= 0) return "0 B";
+  if (!isFinite(numBytes) || numBytes < 0) return "0 B";
+  if (numBytes === 0) return "0 B";
+  // 处理超大文件（超过PB）
+  if (numBytes > 1024 ** 5) return "超大文件";
   const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const sizes = ["B", "KB", "MB", "GB", "TB", "PB"];
   const i = Math.floor(Math.log(numBytes) / Math.log(k));
   const index = Math.min(i, sizes.length - 1);
   return parseFloat((numBytes / Math.pow(k, index)).toFixed(2)) + " " + sizes[index];
