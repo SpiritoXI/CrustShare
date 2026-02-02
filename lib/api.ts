@@ -1915,9 +1915,31 @@ export const gatewayApi = {
     // 使用队列控制并发
     const queue = [...gateways];
     const executing: Set<Promise<void>> = new Set();
+    const processedGateways = new Set<string>();
 
     const processGateway = async (gateway: Gateway): Promise<void> => {
-      if (signal?.aborted) return;
+      // 如果已经处理过，跳过
+      if (processedGateways.has(gateway.url)) return;
+      processedGateways.add(gateway.url);
+
+      // 如果已取消，标记为失败
+      if (signal?.aborted) {
+        const cancelledResult = {
+          gateway,
+          available: false,
+          latency: Infinity,
+          downloadSpeed: 0,
+          downloadedBytes: 0,
+          error: '检测已取消',
+        };
+        results.push(cancelledResult);
+        onProgress?.(gateway, {
+          available: false,
+          downloadSpeed: 0,
+          latency: Infinity,
+        });
+        return;
+      }
 
       const result = await this.testGatewayDownloadConnectivity(gateway, {
         signal,
@@ -1939,8 +1961,34 @@ export const gatewayApi = {
     // 持续处理直到队列为空
     while (queue.length > 0 || executing.size > 0) {
       if (signal?.aborted) {
+        // 取消所有正在执行的请求
+        const remainingGateways = [...queue];
+        queue.length = 0; // 清空队列
+
+        // 等待正在执行的任务完成
         if (executing.size > 0) {
           await Promise.all(executing);
+        }
+
+        // 为未处理的网关添加取消结果
+        for (const gateway of remainingGateways) {
+          if (!processedGateways.has(gateway.url)) {
+            processedGateways.add(gateway.url);
+            const cancelledResult = {
+              gateway,
+              available: false,
+              latency: Infinity,
+              downloadSpeed: 0,
+              downloadedBytes: 0,
+              error: '检测已取消',
+            };
+            results.push(cancelledResult);
+            onProgress?.(gateway, {
+              available: false,
+              downloadSpeed: 0,
+              latency: Infinity,
+            });
+          }
         }
         break;
       }

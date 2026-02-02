@@ -67,14 +67,16 @@ export const GATEWAY_DOWNLOAD_TEST_CID = 'QmZtmD2qt6fJot32nabSP3CUjicnypEBz7bHVD
 export const GATEWAY_DOWNLOAD_TEST = {
   // 测试文件大小（字节）- 约 100KB
   TEST_FILE_SIZE: 100 * 1024,
-  // 下载测试超时时间（毫秒）
-  TIMEOUT: 30000,
-  // 最小下载字节数（用于判断连通性）
-  MIN_DOWNLOAD_BYTES: 50 * 1024,
-  // 最大重试次数
-  MAX_RETRIES: 2,
+  // 下载测试超时时间（毫秒）- 10秒快速超时
+  TIMEOUT: 10000,
+  // 最小下载字节数（用于判断连通性）- 减少到10KB加快检测
+  MIN_DOWNLOAD_BYTES: 10 * 1024,
+  // 最大重试次数 - 减少到1次加快检测
+  MAX_RETRIES: 1,
   // 重试延迟（毫秒）
-  RETRY_DELAY: 1000,
+  RETRY_DELAY: 500,
+  // 并发数 - 提高并发加快检测
+  MAX_CONCURRENCY: 5,
 } as const;
 
 /**

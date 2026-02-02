@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatFileSize, copyToClipboard } from "@/lib/utils";
 import { gatewayApi, shareApi } from "@/lib/api";
-import { CONFIG } from "@/lib/config";
+import { CONFIG, GATEWAY_DOWNLOAD_TEST } from "@/lib/config";
 import type { Gateway } from "@/types";
 
 interface ShareInfo {
@@ -156,6 +156,8 @@ export default function DownloadPageClient() {
     const total = gatewayLinks.length;
     let completed = 0;
     let currentBest: GatewayLink | null = null;
+    let availableCount = 0;
+    const MIN_AVAILABLE_GATEWAYS = 3; // 找到3个可用网关后提前结束
 
     // 使用新的下载连通性测试
     const abortController = new AbortController();
@@ -165,7 +167,7 @@ export default function DownloadPageClient() {
         gatewayLinks.map((l) => l.gateway),
         {
           signal: abortController.signal,
-          maxConcurrency: 3,
+          maxConcurrency: GATEWAY_DOWNLOAD_TEST.MAX_CONCURRENCY,
           onProgress: (gateway, result) => {
             // 找到对应的 link 索引
             const index = gatewayLinks.findIndex((l) => l.gateway.url === gateway.url);
@@ -185,6 +187,7 @@ export default function DownloadPageClient() {
 
             // 更新最快网关（按下载速度）
             if (result.available) {
+              availableCount++;
               if (
                 !currentBest ||
                 (result.downloadSpeed >
@@ -192,6 +195,11 @@ export default function DownloadPageClient() {
               ) {
                 currentBest = { ...updatedLink, downloadSpeed: result.downloadSpeed };
                 setBestGateway(updatedLink);
+              }
+
+              // 找到足够数量的可用网关后提前终止
+              if (availableCount >= MIN_AVAILABLE_GATEWAYS) {
+                abortController.abort();
               }
             }
 
@@ -232,9 +240,15 @@ export default function DownloadPageClient() {
         }
       }
     } catch (error) {
-      console.error("智能检测失败:", error);
+      // 如果是主动取消，不报错
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('[智能检测] 已找到足够可用网关，提前结束检测');
+      } else {
+        console.error("智能检测失败:", error);
+      }
     } finally {
       setIsSmartTesting(false);
+      setTestProgress(100);
     }
   }, [gatewayLinks]);
 
