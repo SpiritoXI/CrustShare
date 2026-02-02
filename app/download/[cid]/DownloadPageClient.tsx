@@ -70,10 +70,9 @@ export default function DownloadPageClient() {
         if (info) {
           fileInfo = {
             cid: info.cid,
-            filename: info.filename,
-            size: info.size,
+            filename: info.filename || fileInfo.filename,
+            size: info.size ?? fileInfo.size,
           };
-          setShareInfo(fileInfo);
         }
       } catch {
         console.warn("获取分享信息失败，使用URL参数");
@@ -89,12 +88,14 @@ export default function DownloadPageClient() {
               filename: fileInfo.filename || cidInfo.name,
               size: fileInfo.size || cidInfo.size,
             };
-            setShareInfo(fileInfo);
           }
         } catch {
           console.warn("从IPFS网关获取文件信息失败");
         }
       }
+
+      // 更新文件信息状态
+      setShareInfo(fileInfo);
 
       // 获取网关列表
       const allGateways = [...CONFIG.DEFAULT_GATEWAYS];
@@ -117,10 +118,11 @@ export default function DownloadPageClient() {
       }));
       setGatewayLinks(links);
 
-      // 测试网关可用性
-      testGateways(links);
-
+      // 网关列表已加载完成，关闭加载状态
       setIsLoading(false);
+
+      // 在后台测试网关可用性（不阻塞UI）
+      testGateways(links);
     };
 
     loadData();
@@ -332,7 +334,14 @@ export default function DownloadPageClient() {
                     暂无可用网关，请点击刷新按钮重试
                   </div>
                 ) : (
-                  sortedLinks.map((link, index) => (
+                  <>
+                    {isTesting && (
+                      <div className="flex items-center justify-center py-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        正在检测网关可用性...
+                      </div>
+                    )}
+                    {sortedLinks.map((link, index) => (
                   <motion.div
                     key={link.gateway.url}
                     initial={{ opacity: 0, x: -20 }}
@@ -403,7 +412,8 @@ export default function DownloadPageClient() {
                       </Button>
                     </div>
                   </motion.div>
-                ))
+                ))}
+                </>
                 )}
               </div>
             </CardContent>
