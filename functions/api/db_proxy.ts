@@ -198,6 +198,10 @@ interface RenameFileBody {
   fileId: string | number;
   newName: string;
 }
+interface UpdateFileBody {
+  fileId: string | number;
+  updates: Partial<FileRecord>;
+}
 
 export async function onRequestPost(context: Context): Promise<Response> {
   const { request, env } = context;
@@ -221,7 +225,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
       | MoveFilesBody
       | CopyFilesBody
       | RenameFolderBody
-      | RenameFileBody;
+      | RenameFileBody
+      | UpdateFileBody;
 
     switch (action) {
       case "save_file": {
@@ -230,6 +235,52 @@ export async function onRequestPost(context: Context): Promise<Response> {
           env.UPSTASH_TOKEN,
           ["LPUSH", FILES_KEY, JSON.stringify(body)]
         );
+        return new Response(
+          JSON.stringify({ success: true } as ApiResponse),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      case "update_file": {
+        const updateBody = body as UpdateFileBody;
+        const files = await upstashCommand<string[]>(
+          env.UPSTASH_URL,
+          env.UPSTASH_TOKEN,
+          ["LRANGE", FILES_KEY, "0", "-1"]
+        );
+
+        let updated = false;
+        if (Array.isArray(files)) {
+          for (let i = 0; i < files.length; i++) {
+            try {
+              const file = JSON.parse(files[i]) as FileRecord;
+              if (file.id === updateBody.fileId) {
+                const updatedFile = { ...file, ...updateBody.updates };
+                await upstashCommand(
+                  env.UPSTASH_URL,
+                  env.UPSTASH_TOKEN,
+                  ["LREM", FILES_KEY, 0, files[i]]
+                );
+                await upstashCommand(
+                  env.UPSTASH_URL,
+                  env.UPSTASH_TOKEN,
+                  ["LPUSH", FILES_KEY, JSON.stringify(updatedFile)]
+                );
+                updated = true;
+                break;
+              }
+            } catch {
+            }
+          }
+        }
+
+        if (!updated) {
+          return new Response(
+            JSON.stringify({ success: false, error: "文件不存在" } as ApiResponse),
+            { status: 404, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
         return new Response(
           JSON.stringify({ success: true } as ApiResponse),
           { status: 200, headers: { "Content-Type": "application/json" } }

@@ -70,6 +70,15 @@ export const api = {
     if (!data.success) throw new Error(data.error || "保存文件失败");
   },
 
+  async updateFile(fileId: string | number, updates: Partial<FileRecord>): Promise<void> {
+    const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=update_file`, {
+      method: "POST",
+      body: JSON.stringify({ fileId, updates }),
+    });
+    const data: ApiResponse = await response.json();
+    if (!data.success) throw new Error(data.error || "更新文件失败");
+  },
+
   async addCid(cid: string, name: string, size: number, folderId: string = "default"): Promise<FileRecord> {
     const response = await secureFetch(`${CONFIG.API_DB_PROXY}?action=add_cid`, {
       method: "POST",

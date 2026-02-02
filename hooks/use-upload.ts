@@ -141,8 +141,7 @@ export function useUpload(options: UseUploadOptions): UploadState & UploadOperat
 
             // 后台快速验证文件完整性
             uploadApi.verifyFile(result.cid).then((verifyResult) => {
-              const updatedFile: FileRecord = {
-                ...fileRecord,
+              const updates = {
                 verified: verifyResult.verified,
                 verify_status: verifyResult.status,
                 verify_message: verifyResult.message,
@@ -150,11 +149,11 @@ export function useUpload(options: UseUploadOptions): UploadState & UploadOperat
 
               // 更新本地状态
               setFiles((prev) =>
-                prev.map((f) => (f.id === fileRecord.id ? updatedFile : f))
+                prev.map((f) => (f.id === fileRecord.id ? { ...f, ...updates } : f))
               );
 
-              // 保存验证结果到服务器
-              api.saveFile(updatedFile).catch((err) => {
+              // 更新验证结果到服务器（使用 updateFile 而不是 saveFile 避免重复）
+              api.updateFile(fileRecord.id, updates).catch((err) => {
                 console.error("保存验证结果失败:", err);
               });
 
