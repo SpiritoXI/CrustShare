@@ -23,6 +23,7 @@ interface GatewayLink {
   url: string;
   status: "pending" | "testing" | "success" | "failed";
   latency?: number;
+  downloadSpeed?: number;
 }
 
 declare global {
@@ -144,10 +145,10 @@ export default function DownloadPageClient() {
     await Promise.all(testPromises);
   };
 
-  // 智能检测 - 并发测试所有网关，实时更新最快网关
+  // 智能检测 - 使用下载连通性测试，更准确
   const smartTestGateways = useCallback(async () => {
     if (gatewayLinks.length === 0) return;
-    
+
     setIsSmartTesting(true);
     setTestProgress(0);
     setBestGateway(null);
@@ -156,48 +157,86 @@ export default function DownloadPageClient() {
     let completed = 0;
     let currentBest: GatewayLink | null = null;
 
-    // 创建所有测试任务
-    const testPromises = gatewayLinks.map(async (link, index) => {
-      const startTime = Date.now();
-      
-      setGatewayLinks((prev) =>
-        prev.map((l, i) => (i === index ? { ...l, status: "testing" } : l))
+    // 使用新的下载连通性测试
+    const abortController = new AbortController();
+
+    try {
+      const results = await gatewayApi.smartDownloadTest(
+        gatewayLinks.map((l) => l.gateway),
+        {
+          signal: abortController.signal,
+          maxConcurrency: 3,
+          onProgress: (gateway, result) => {
+            // 找到对应的 link 索引
+            const index = gatewayLinks.findIndex((l) => l.gateway.url === gateway.url);
+            if (index === -1) return;
+
+            const link = gatewayLinks[index];
+            const updatedLink: GatewayLink = {
+              ...link,
+              status: result.available ? "success" : "failed",
+              latency: result.latency,
+              downloadSpeed: result.downloadSpeed,
+            };
+
+            setGatewayLinks((prev) =>
+              prev.map((l, i) => (i === index ? updatedLink : l))
+            );
+
+            // 更新最快网关（按下载速度）
+            if (result.available) {
+              if (
+                !currentBest ||
+                (result.downloadSpeed >
+                  (currentBest as GatewayLink & { downloadSpeed?: number }).downloadSpeed!)
+              ) {
+                currentBest = { ...updatedLink, downloadSpeed: result.downloadSpeed };
+                setBestGateway(updatedLink);
+              }
+            }
+
+            completed++;
+            setTestProgress(Math.round((completed / total) * 100));
+          },
+        }
       );
 
-      try {
-        const result = await gatewayApi.testGateway(link.gateway);
-        const latency = Date.now() - startTime;
-
-        const updatedLink: GatewayLink = {
-          ...link,
-          status: result.available ? "success" : "failed",
-          latency: result.latency || latency,
-        };
-
-        setGatewayLinks((prev) =>
-          prev.map((l, i) => (i === index ? updatedLink : l))
-        );
-
-        // 更新最快网关
-        if (result.available) {
-          if (!currentBest || (updatedLink.latency && currentBest.latency && updatedLink.latency < currentBest.latency)) {
-            currentBest = updatedLink;
-            setBestGateway(updatedLink);
+      // 更新所有网关状态
+      setGatewayLinks((prev) =>
+        prev.map((link) => {
+          const result = results.find((r) => r.gateway.url === link.gateway.url);
+          if (result) {
+            return {
+              ...link,
+              status: result.available ? "success" : "failed",
+              latency: result.latency,
+              downloadSpeed: result.downloadSpeed,
+            };
           }
-        }
-      } catch {
-        setGatewayLinks((prev) =>
-          prev.map((l, i) => (i === index ? { ...l, status: "failed" } : l))
+          return link;
+        })
+      );
+
+      // 设置最佳网关（按下载速度排序后的第一个）
+      const bestResult = results.find((r) => r.available);
+      if (bestResult) {
+        const bestLink = gatewayLinks.find(
+          (l) => l.gateway.url === bestResult.gateway.url
         );
+        if (bestLink) {
+          setBestGateway({
+            ...bestLink,
+            status: "success",
+            latency: bestResult.latency,
+          });
+        }
       }
-
-      completed++;
-      setTestProgress(Math.round((completed / total) * 100));
-    });
-
-    await Promise.all(testPromises);
-    setIsSmartTesting(false);
-  }, [gatewayLinks.length]);
+    } catch (error) {
+      console.error("智能检测失败:", error);
+    } finally {
+      setIsSmartTesting(false);
+    }
+  }, [gatewayLinks]);
 
   // 复制链接
   const handleCopyUrl = async (url: string) => {
@@ -233,11 +272,27 @@ export default function DownloadPageClient() {
     setTimeout(() => smartTestGateways(), 0);
   };
 
-  // 按可用性和延迟排序
+  // 按可用性、下载速度、延迟排序
   const sortedLinks = [...gatewayLinks].sort((a, b) => {
+    // 1. 可用性优先
     if (a.status === "success" && b.status !== "success") return -1;
     if (a.status !== "success" && b.status === "success") return 1;
+
+    // 2. 下载速度次之（速度高的排前面）
+    if (a.downloadSpeed && b.downloadSpeed) {
+      if (b.downloadSpeed !== a.downloadSpeed) {
+        return b.downloadSpeed - a.downloadSpeed;
+      }
+    } else if (a.downloadSpeed) {
+      return -1;
+    } else if (b.downloadSpeed) {
+      return 1;
+    }
+
+    // 3. 延迟最后（延迟低的排前面）
     if (a.latency && b.latency) return a.latency - b.latency;
+    if (a.latency) return -1;
+    if (b.latency) return 1;
     return 0;
   });
 

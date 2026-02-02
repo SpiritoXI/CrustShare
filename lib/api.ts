@@ -1,4 +1,4 @@
-import { API, CRUST, INTEGRITY_CHECK, CONFIG } from "./config";
+import { API, CRUST, INTEGRITY_CHECK, CONFIG, GATEWAY_DOWNLOAD_TEST_CID, GATEWAY_DOWNLOAD_TEST } from "./config";
 import type { FileRecord, Folder, ApiResponse, Gateway, SavedGateway } from "@/types";
 import { useAuthStore, useGatewayStore } from "./store";
 
@@ -1740,6 +1740,229 @@ export const gatewayApi = {
     console.log(`[Gateway] 保存网关检测完成，${availableCount}/${results.length} 个可用`);
 
     return results;
+  },
+
+  /**
+   * 下载连通性测试 - 通过下载约 100KB 文件测试网关实际下载能力
+   * 用于下载页面智能检测，比 HEAD 请求更准确
+   */
+  async testGatewayDownloadConnectivity(
+    gateway: Gateway,
+    options: {
+      retries?: number;
+      signal?: AbortSignal;
+      onProgress?: (downloadedBytes: number, totalBytes: number) => void;
+    } = {}
+  ): Promise<{
+    available: boolean;
+    latency: number;
+    downloadSpeed: number; // bytes per second
+    downloadedBytes: number;
+    error?: string;
+  }> {
+    const { retries = GATEWAY_DOWNLOAD_TEST.MAX_RETRIES, signal, onProgress } = options;
+    const testUrl = `${gateway.url}${GATEWAY_DOWNLOAD_TEST_CID}`;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      // 检查是否已取消
+      if (signal?.aborted) {
+        return {
+          available: false,
+          latency: Infinity,
+          downloadSpeed: 0,
+          downloadedBytes: 0,
+          error: '测试已取消',
+        };
+      }
+
+      if (attempt > 0) {
+        await new Promise((r) => setTimeout(r, GATEWAY_DOWNLOAD_TEST.RETRY_DELAY));
+      }
+
+      const startTime = performance.now();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        GATEWAY_DOWNLOAD_TEST.TIMEOUT
+      );
+
+      // 如果外部 signal 被取消，也取消内部请求
+      const abortHandler = () => controller.abort();
+      signal?.addEventListener('abort', abortHandler);
+
+      try {
+        const response = await fetch(testUrl, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: {
+            Accept: '*/*',
+            Range: `bytes=0-${GATEWAY_DOWNLOAD_TEST.MIN_DOWNLOAD_BYTES - 1}`,
+          },
+        });
+
+        signal?.removeEventListener('abort', abortHandler);
+
+        if (!response.ok && response.status !== 206) {
+          clearTimeout(timeoutId);
+          continue; // 重试
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          clearTimeout(timeoutId);
+          continue; // 重试
+        }
+
+        let downloadedBytes = 0;
+        const firstByteTime = performance.now();
+        const latency = Math.round(firstByteTime - startTime);
+
+        // 读取数据流
+        while (downloadedBytes < GATEWAY_DOWNLOAD_TEST.MIN_DOWNLOAD_BYTES) {
+          // 检查是否已取消
+          if (signal?.aborted || controller.signal.aborted) {
+            reader.cancel();
+            clearTimeout(timeoutId);
+            return {
+              available: false,
+              latency,
+              downloadSpeed: 0,
+              downloadedBytes,
+              error: '测试已取消',
+            };
+          }
+
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          downloadedBytes += value.length;
+          onProgress?.(downloadedBytes, GATEWAY_DOWNLOAD_TEST.TEST_FILE_SIZE);
+        }
+
+        reader.cancel();
+        clearTimeout(timeoutId);
+
+        const endTime = performance.now();
+        const duration = (endTime - firstByteTime) / 1000; // 转换为秒
+        const downloadSpeed = duration > 0 ? Math.round(downloadedBytes / duration) : 0;
+
+        // 判断是否满足连通性要求
+        const available = downloadedBytes >= GATEWAY_DOWNLOAD_TEST.MIN_DOWNLOAD_BYTES;
+
+        if (available) {
+          return {
+            available: true,
+            latency,
+            downloadSpeed,
+            downloadedBytes,
+          };
+        }
+      } catch (error) {
+        clearTimeout(timeoutId);
+        signal?.removeEventListener('abort', abortHandler);
+
+        // 如果是最后一次尝试，返回错误
+        if (attempt === retries) {
+          return {
+            available: false,
+            latency: Infinity,
+            downloadSpeed: 0,
+            downloadedBytes: 0,
+            error: error instanceof Error ? error.message : '下载测试失败',
+          };
+        }
+      }
+    }
+
+    return {
+      available: false,
+      latency: Infinity,
+      downloadSpeed: 0,
+      downloadedBytes: 0,
+      error: '所有重试均失败',
+    };
+  },
+
+  /**
+   * 智能下载检测 - 测试所有网关的下载连通性
+   * 用于下载页面，返回按下载速度排序的网关列表
+   */
+  async smartDownloadTest(
+    gateways: Gateway[],
+    options: {
+      onProgress?: (gateway: Gateway, result: { available: boolean; downloadSpeed: number; latency: number }) => void;
+      signal?: AbortSignal;
+      maxConcurrency?: number;
+    } = {}
+  ): Promise<Array<{
+    gateway: Gateway;
+    available: boolean;
+    latency: number;
+    downloadSpeed: number;
+    downloadedBytes: number;
+    error?: string;
+  }>> {
+    const { onProgress, signal, maxConcurrency = 3 } = options;
+    const results: Array<{
+      gateway: Gateway;
+      available: boolean;
+      latency: number;
+      downloadSpeed: number;
+      downloadedBytes: number;
+      error?: string;
+    }> = [];
+
+    // 使用队列控制并发
+    const queue = [...gateways];
+    const executing: Set<Promise<void>> = new Set();
+
+    const processGateway = async (gateway: Gateway): Promise<void> => {
+      if (signal?.aborted) return;
+
+      const result = await this.testGatewayDownloadConnectivity(gateway, {
+        signal,
+      });
+
+      const gatewayResult = {
+        gateway,
+        ...result,
+      };
+
+      results.push(gatewayResult);
+      onProgress?.(gateway, {
+        available: result.available,
+        downloadSpeed: result.downloadSpeed,
+        latency: result.latency,
+      });
+    };
+
+    // 持续处理直到队列为空
+    while (queue.length > 0 || executing.size > 0) {
+      if (signal?.aborted) {
+        if (executing.size > 0) {
+          await Promise.all(executing);
+        }
+        break;
+      }
+
+      while (executing.size < maxConcurrency && queue.length > 0) {
+        const gateway = queue.shift()!;
+        const promise = processGateway(gateway).finally(() => {
+          executing.delete(promise);
+        });
+        executing.add(promise);
+      }
+
+      if (executing.size > 0) {
+        await Promise.race(executing);
+      }
+    }
+
+    // 按下载速度和可用性排序
+    return results.sort((a, b) => {
+      if (a.available !== b.available) return a.available ? -1 : 1;
+      return b.downloadSpeed - a.downloadSpeed;
+    });
   },
 };
 
