@@ -10,7 +10,8 @@
 4. [Cloudflare Pages 部署](#cloudflare-pages-部署)
 5. [Vercel 部署](#vercel-部署)
 6. [Docker 部署](#docker-部署)
-7. [常见问题排查](#常见问题排查)
+7. [环境变量详解](#环境变量详解)
+8. [常见问题排查](#常见问题排查)
 
 ---
 
@@ -171,6 +172,16 @@ npm run dev
 
 使用管理员密码登录，开始测试。
 
+### 5. 本地构建测试
+
+```bash
+# 构建生产版本
+pnpm build
+
+# 类型检查
+pnpm typecheck
+```
+
 ---
 
 ## Cloudflare Pages 部署
@@ -245,6 +256,7 @@ CRUST_TOKEN=your-crust-token
 2. 使用管理员密码可以登录
 3. 文件上传功能正常
 4. 分享功能正常
+5. 网关测试功能正常
 
 ---
 
@@ -300,6 +312,7 @@ CRUST_TOKEN=your-crust-token
 
 - Vercel 的免费版有函数执行时间限制（10秒），大文件上传可能超时
 - 建议使用 Cloudflare Pages 获得更好的边缘函数支持
+- Vercel 的 Hobby 计划有带宽限制（100GB/月）
 
 ---
 
@@ -426,6 +439,40 @@ docker-compose up -d
 
 ---
 
+## 环境变量详解
+
+### 必需变量
+
+| 变量名 | 说明 | 示例 |
+|--------|------|------|
+| `UPSTASH_URL` | Upstash Redis URL | `https://your-url.upstash.io` |
+| `UPSTASH_TOKEN` | Upstash REST API Token | `your-token` |
+| `ADMIN_PASSWORD_HASH` | 管理员密码 SHA256 哈希 | `0192023a7bbd7325...` |
+| `CRUST_TOKEN` | Crust Network API Token | `your-crust-token` |
+
+### 可选变量
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| `DEFAULT_PAGE_SIZE` | 默认每页显示文件数 | `20` |
+| `MAX_UPLOAD_SIZE` | 上传文件大小限制（字节） | `1073741824` (1GB) |
+| `DEFAULT_SHARE_EXPIRY_DAYS` | 分享链接默认过期天数 | `7` |
+
+### 生成密码哈希
+
+```bash
+# 方法1: 使用 Node.js
+node -e "console.log(require('crypto').createHash('sha256').update('your-password').digest('hex'))"
+
+# 方法2: 使用 OpenSSL
+echo -n "your-password" | openssl dgst -sha256
+
+# 方法3: 使用 Python
+python3 -c "import hashlib; print(hashlib.sha256('your-password'.encode()).hexdigest())"
+```
+
+---
+
 ## 常见问题排查
 
 ### 1. 构建失败
@@ -457,6 +504,7 @@ pnpm build
 1. 确认 `.env.local` 文件存在且配置正确
 2. 检查变量名是否拼写正确
 3. 重新启动开发服务器
+4. 生产环境检查平台的环境变量配置
 
 ### 3. Upstash 连接失败
 
@@ -474,6 +522,8 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
   https://your-url.upstash.io/get/test
 ```
 
+**注意：** 项目已实现 Redis 降级机制，连接失败时会自动切换到内存缓存模式，数据仅在内存中保存，重启后丢失。
+
 ### 4. 文件上传失败
 
 **问题：** 无法上传文件到 Crust Network
@@ -484,6 +534,9 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 2. 在 Crust Cloud 控制台确认 Token 状态
 3. 检查文件大小是否超过限制（默认 1GB）
 4. 查看浏览器控制台的网络请求错误
+5. 确认网络连接稳定
+
+**注意：** 项目已实现上传重试机制，网络异常时会自动重试（最多3次，指数退避）。
 
 ### 5. 登录失败
 
@@ -509,6 +562,7 @@ node -e "console.log(require('crypto').createHash('sha256').update('your-passwor
 1. 检查构建设置中的 **Output directory** 是否为 `dist`
 2. 检查 `_routes.json` 文件是否存在
 3. 在 Cloudflare Pages 设置中检查 **Build output directory**
+4. 检查 Functions 是否正确部署
 
 ### 7. 网关测试失败
 
@@ -520,6 +574,7 @@ node -e "console.log(require('crypto').createHash('sha256').update('your-passwor
 2. 确认浏览器没有阻止跨域请求
 3. 尝试添加自定义网关
 4. 清除浏览器缓存后重试
+5. 检查防火墙设置
 
 ### 8. 分享链接无法访问
 
@@ -531,6 +586,35 @@ node -e "console.log(require('crypto').createHash('sha256').update('your-passwor
 2. 检查网关是否可用
 3. 尝试切换其他网关
 4. 确认文件已在 IPFS 网络中可用
+5. 检查分享是否已过期
+
+### 9. localStorage 配额超出
+
+**问题：** 浏览器提示存储空间不足
+
+**解决方案：**
+
+1. 清除浏览器缓存
+2. 删除旧的网关测试结果
+3. 项目已实现缓存大小限制，会自动清理
+
+### 10. 类型检查错误
+
+**问题：** `pnpm typecheck` 报错
+
+**解决方案：**
+
+```bash
+# 1. 检查 TypeScript 版本
+pnpm tsc --version
+
+# 2. 重新安装依赖
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
+
+# 3. 再次运行类型检查
+pnpm typecheck
+```
 
 ---
 
@@ -556,6 +640,12 @@ Next.js 自动进行代码分割，确保按需加载。
 - 文件列表适当缓存
 - 使用 Service Worker 缓存静态资源
 
+### 5. 数据库优化
+
+- 定期清理过期分享数据
+- 监控 Redis 内存使用
+- 考虑升级到付费版获得更高性能
+
 ---
 
 ## 安全建议
@@ -578,6 +668,12 @@ Next.js 自动进行代码分割，确保按需加载。
 - 配置适当的 CORS 策略
 - 监控异常访问日志
 
+### 4. 数据备份
+
+- 定期备份 Upstash Redis 数据
+- 导出重要文件 CID 列表
+- 配置监控告警
+
 ---
 
 ## 获取帮助
@@ -587,6 +683,7 @@ Next.js 自动进行代码分割，确保按需加载。
 1. 查看项目 [Issues](https://github.com/yourusername/crustshare/issues)
 2. 提交新的 Issue，描述问题和复现步骤
 3. 查看 Cloudflare/Vercel 官方文档
+4. 参考 [README.md](./README.md) 了解项目详情
 
 ---
 

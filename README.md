@@ -5,6 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?logo=cloudflare&logoColor=white)](https://pages.cloudflare.com/)
 
 ## 项目介绍
 
@@ -20,6 +21,8 @@ CrustShare 是一个开源的去中心化文件存储和分享平台，利用 Cr
 - **批量操作** - 批量移动、复制、删除文件，提升效率
 - **CID 导入** - 支持导入已有 IPFS CID 到文件库
 - **响应式设计** - 完美适配桌面、平板、手机等各种设备
+- **上传重试机制** - 网络异常自动重试，确保上传成功率
+- **Redis 降级方案** - 连接失败时自动切换到内存缓存
 
 ## 技术架构
 
@@ -34,6 +37,7 @@ CrustShare 是一个开源的去中心化文件存储和分享平台，利用 Cr
 | [shadcn/ui](https://ui.shadcn.com/) | - | UI 组件库 |
 | [Zustand](https://github.com/pmndrs/zustand) | 4 | 状态管理 |
 | [Framer Motion](https://www.framer.com/motion/) | 10 | 动画效果 |
+| [TanStack Query](https://tanstack.com/query) | 5 | 数据获取与缓存 |
 
 ### 后端服务
 
@@ -42,6 +46,7 @@ CrustShare 是一个开源的去中心化文件存储和分享平台，利用 Cr
 | [Upstash Redis](https://upstash.com/) | 数据持久化存储 |
 | [Crust Network](https://crust.network/) | 去中心化文件存储 |
 | [IPFS](https://ipfs.tech/) | 分布式文件系统 |
+| [Cloudflare Pages](https://pages.cloudflare.com/) | 边缘计算与部署 |
 
 ### 部署平台
 
@@ -117,7 +122,7 @@ crustshare/
 │   ├── store.ts                 # 状态管理
 │   └── utils.ts                 # 工具函数
 ├── functions/api/                # Cloudflare Functions
-│   ├── db_proxy.ts              # 数据库代理
+│   ├── db_proxy.ts              # 数据库代理（含降级处理）
 │   ├── get_token.ts             # 获取上传令牌
 │   ├── share.ts                 # 分享接口
 │   ├── verify-password.ts       # 密码验证
@@ -138,6 +143,7 @@ crustshare/
 ├── tsconfig.json                 # TypeScript 配置
 ├── README.md                     # 项目说明
 ├── DEPLOY.md                     # 部署文档
+├── CHANGELOG.md                  # 更新日志
 └── LICENSE.md                    # 许可证
 ```
 
@@ -152,6 +158,7 @@ crustshare/
 - 文件大小限制（默认 1GB）
 - 文件类型验证
 - 文件名安全检查
+- **自动重试机制** - 网络异常时自动重试（最多3次，指数退避）
 
 **关键接口：**
 
@@ -172,7 +179,7 @@ export function useUpload() {
 - 文件列表展示（列表/网格视图）
 - 文件搜索
 - 文件排序
-- 批量操作（移动、删除）
+- 批量操作（移动、复制、删除）
 - 文件重命名
 
 **关键接口：**
@@ -222,6 +229,7 @@ export interface FolderOperations {
 - 延迟检测
 - 智能选择最优网关
 - 自定义网关添加
+- 网关健康度评分
 
 **关键接口：**
 
@@ -272,6 +280,7 @@ export const api = {
   deleteFile: (fileId: string) => Promise<void>;
   renameFile: (fileId: string, newName: string) => Promise<void>;
   moveFiles: (fileIds: string[], folderId: string) => Promise<void>;
+  copyFiles: (fileIds: string[], folderId: string) => Promise<void>;
   loadFolders: () => Promise<Folder[]>;
   createFolder: (folder: Folder) => Promise<void>;
   deleteFolder: (folderId: string) => Promise<void>;
@@ -283,7 +292,8 @@ export const uploadApi = {
   uploadToCrust: (
     file: File,
     token: string,
-    onProgress: (progress: number) => void
+    onProgress: (progress: number) => void,
+    retryCount?: number
   ) => Promise<{ cid: string; hash: string; size: number }>;
   verifyFile: (cid: string) => Promise<VerifyResult>;
 };
@@ -294,6 +304,7 @@ export const gatewayApi = {
   fetchPublicGateways: () => Promise<Gateway[]>;
   getCachedResults: () => Gateway[] | null;
   cacheResults: (gateways: Gateway[]) => void;
+  autoTestGateways: (customGateways?: Gateway[]) => Promise<Gateway[]>;
 };
 
 export const shareApi = {
@@ -301,6 +312,62 @@ export const shareApi = {
   getShareInfo: (cid: string) => Promise<ShareInfo | null>;
   verifyPassword: (cid: string, password: string) => Promise<ShareInfo | null>;
 };
+```
+
+### 7. 错误处理与降级机制
+
+项目实现了完善的错误处理和降级机制：
+
+#### Redis 连接降级
+
+```typescript
+// functions/api/db_proxy.ts
+// 当 Redis 连接失败时，自动切换到内存缓存模式
+const memoryCache = new Map<string, unknown>();
+let useMemoryCache = false;
+
+async function upstashCommand<T>(
+  upstashUrl: string,
+  upstashToken: string,
+  command: (string | number)[],
+  retryCount = 3  // 默认重试3次
+): Promise<T> {
+  // 实现重试逻辑和降级处理
+}
+```
+
+#### 上传重试机制
+
+```typescript
+// lib/api.ts - uploadToCrust
+// 支持指数退避重试策略
+for (let attempt = 0; attempt < retryCount; attempt++) {
+  try {
+    const result = await attemptUpload(attempt);
+    return result;
+  } catch (error) {
+    // 指数退避延迟
+    const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+}
+```
+
+#### localStorage 存储限制处理
+
+```typescript
+// lib/api.ts - cacheResults
+// 限制缓存大小，避免超出 localStorage 配额
+cacheResults(gateways: Gateway[]): void {
+  const maxGatewaysToCache = 50;
+  const maxSize = 4 * 1024 * 1024; // 4MB
+  
+  // 检查缓存大小，超出则跳过缓存
+  if (sizeInBytes > maxSize) {
+    console.warn('网关缓存数据过大，跳过缓存');
+    return;
+  }
+}
 ```
 
 ## 快速开始
@@ -376,6 +443,21 @@ pnpm dev
 6. 添加环境变量
 7. 点击 **Save and Deploy**
 
+## 更新日志
+
+查看 [CHANGELOG.md](./CHANGELOG.md) 了解项目更新历史。
+
+## 贡献指南
+
+欢迎提交 Issue 和 Pull Request！请查看 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解详情。
+
 ## 许可证
 
 [MIT License](./LICENSE.md)
+
+## 致谢
+
+- [Crust Network](https://crust.network/) - 去中心化存储网络
+- [IPFS](https://ipfs.tech/) - 星际文件系统
+- [Cloudflare](https://www.cloudflare.com/) - 边缘计算平台
+- [shadcn/ui](https://ui.shadcn.com/) - 优秀的 UI 组件库
