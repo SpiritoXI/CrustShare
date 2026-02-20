@@ -223,7 +223,7 @@ export default function SharePage() {
     // 优先使用 Cloudflare Pages Function 注入的 CID
     const injectedCid = (window as unknown as { __SHARE_CID__?: string }).__SHARE_CID__;
     
-    if (injectedCid && injectedCid !== 'placeholder') {
+    if (injectedCid && injectedCid !== 'placeholder' && injectedCid !== '_placeholder_') {
       setCid(injectedCid);
       return;
     }
@@ -232,15 +232,15 @@ export default function SharePage() {
     const pathParts = window.location.pathname.split('/').filter(Boolean);
     const cidFromPath = pathParts[pathParts.length - 1];
 
-    if (cidFromPath && cidFromPath !== 'placeholder') {
+    if (cidFromPath && cidFromPath !== 'placeholder' && cidFromPath !== '_placeholder_') {
       setCid(cidFromPath);
-    } else if (params.cid && params.cid !== 'placeholder') {
+    } else if (params.cid && params.cid !== 'placeholder' && params.cid !== '_placeholder_') {
       setCid(params.cid as string);
     }
   }, [params.cid]);
 
   // 在服务器端或 CID 未获取到时显示占位符
-  if (!isClient || !cid || cid === "placeholder") {
+  if (!isClient || !cid || cid === "placeholder" || cid === "_placeholder_") {
     return <StaticPlaceholder />;
   }
 
