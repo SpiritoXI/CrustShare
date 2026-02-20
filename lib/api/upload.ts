@@ -1,31 +1,95 @@
 import { CONFIG, API } from "../config";
 import { secureFetch } from "./base";
 
-// Crust API 端点 - 直连上传
-const CRUST_UPLOAD_API = 'https://gw.crustfiles.app/api/v0/add?pin=true';
-const CRUST_ORDER_API = 'https://gw.crustfiles.app/crust/api/v1/files';
+// ============================================
+// Crust Network 上传端点配置
+// ============================================
+// 多个备用端点，自动故障转移
+const CRUST_UPLOAD_ENDPOINTS = [
+  {
+    name: 'crustfiles-app',
+    upload: 'https://gw.crustfiles.app/api/v0/add?pin=true',
+    order: 'https://gw.crustfiles.app/crust/api/v1/files',
+  },
+  {
+    name: 'decoo-main',
+    upload: 'https://gw.decoo.io/api/v0/add?pin=true',
+    order: 'https://gw.decoo.io/crust/api/v1/files',
+  },
+  {
+    name: 'decoo-hk',
+    upload: 'https://ipfs-hk.decoo.io/api/v0/add?pin=true',
+    order: 'https://ipfs-hk.decoo.io/crust/api/v1/files',
+  },
+  {
+    name: 'crust-gateway',
+    upload: 'https://crustgateway.com/api/v0/add?pin=true',
+    order: 'https://crustgateway.com/crust/api/v1/files',
+  },
+];
 
 // 上传版本号 - 用于确认代码是否更新
-const UPLOAD_VERSION = '3.3.2-direct';
+const UPLOAD_VERSION = '3.3.3-multi-endpoint';
 
 export const uploadApi = {
   /**
-   * 直连上传到 Crust API
-   * 避免代理服务器的大小限制
+   * 直连上传到 Crust API（多端点自动故障转移）
    * 
-   * 版本: 3.3.2-direct
-   * 端点: https://gw.crustfiles.app/api/v0/add
+   * 特性:
+   * - 多个备用端点，自动故障转移
+   * - 直连上传，绕过代理服务器限制
+   * - 支持 CORS，前端直连无问题
+   * 
+   * 版本: 3.3.3-multi-endpoint
    */
   async uploadToCrust(
     file: File,
     token: string,
     onProgress: (progress: number) => void
   ): Promise<{ cid: string; size: number; hash?: string; orderCreated?: boolean }> {
-    // 调试信息 - 确认使用直连上传
-    console.log(`[CrustShare v${UPLOAD_VERSION}] 直连上传到 Crust API`);
-    console.log(`[CrustShare] 上传端点: ${CRUST_UPLOAD_API}`);
-    console.log(`[CrustShare] 文件名: ${file.name}, 大小: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+    console.log(`[CrustShare v${UPLOAD_VERSION}] 开始多端点上传`);
+    console.log(`[CrustShare] 文件: ${file.name}, 大小: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+    console.log(`[CrustShare] 可用端点: ${CRUST_UPLOAD_ENDPOINTS.map(e => e.name).join(', ')}`);
     
+    const errors: string[] = [];
+    
+    // 依次尝试每个端点
+    for (let i = 0; i < CRUST_UPLOAD_ENDPOINTS.length; i++) {
+      const endpoint = CRUST_UPLOAD_ENDPOINTS[i];
+      console.log(`[CrustShare] 尝试端点 ${i + 1}/${CRUST_UPLOAD_ENDPOINTS.length}: ${endpoint.name}`);
+      console.log(`[CrustShare] 上传 URL: ${endpoint.upload}`);
+      
+      try {
+        const result = await this.uploadToEndpoint(file, token, endpoint.upload, endpoint.order, onProgress);
+        console.log(`[CrustShare] 端点 ${endpoint.name} 上传成功!`);
+        return result;
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[CrustShare] 端点 ${endpoint.name} 失败: ${errorMsg}`);
+        errors.push(`${endpoint.name}: ${errorMsg}`);
+        
+        // 如果不是最后一个端点，继续尝试下一个
+        if (i < CRUST_UPLOAD_ENDPOINTS.length - 1) {
+          console.log(`[CrustShare] 切换到下一个端点...`);
+        }
+      }
+    }
+    
+    // 所有端点都失败了
+    console.error(`[CrustShare] 所有端点都失败!`);
+    throw new Error(`上传失败，已尝试所有端点:\n${errors.join('\n')}`);
+  },
+
+  /**
+   * 上传到指定端点
+   */
+  async uploadToEndpoint(
+    file: File,
+    token: string,
+    uploadUrl: string,
+    orderUrl: string,
+    onProgress: (progress: number) => void
+  ): Promise<{ cid: string; size: number; hash?: string; orderCreated?: boolean }> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
 
@@ -37,24 +101,17 @@ export const uploadApi = {
       });
 
       xhr.addEventListener("load", () => {
-        console.log(`[CrustShare] 上传响应状态: ${xhr.status}`);
-        
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const response = JSON.parse(xhr.responseText);
-            console.log(`[CrustShare] 上传响应:`, response);
             
-            // Crust API 返回 { Hash, Size }
             if (response.Hash) {
               const cid = response.Hash;
               const size = response.Size || file.size;
               
-              console.log(`[CrustShare] 上传成功! CID: ${cid}`);
-              
               // 上传成功后，创建存储订单
-              this.createOrder(cid, size, token)
+              this.createOrder(cid, size, token, orderUrl)
                 .then((orderCreated) => {
-                  console.log(`[CrustShare] 存储订单创建: ${orderCreated ? '成功' : '跳过'}`);
                   resolve({
                     cid,
                     size,
@@ -62,9 +119,8 @@ export const uploadApi = {
                     orderCreated,
                   });
                 })
-                .catch((err) => {
+                .catch(() => {
                   // 订单创建失败不影响上传结果
-                  console.warn("[CrustShare] 创建存储订单失败:", err);
                   resolve({
                     cid,
                     size,
@@ -73,39 +129,39 @@ export const uploadApi = {
                   });
                 });
             } else if (response.error) {
-              console.error(`[CrustShare] 上传失败: ${response.error}`);
               reject(new Error(response.error));
+            } else if (response.Message) {
+              reject(new Error(response.Message));
             } else {
-              console.error(`[CrustShare] 无效响应:`, response);
               reject(new Error("上传失败：无效响应"));
             }
           } catch (parseError) {
-            console.error("[CrustShare] 解析响应失败:", parseError, xhr.responseText);
-            reject(new Error("解析响应失败"));
+            reject(new Error(`解析响应失败: ${xhr.responseText.substring(0, 100)}`));
           }
         } else {
-          console.error(`[CrustShare] 上传失败: ${xhr.status} ${xhr.statusText}`);
+          // 解析错误信息
+          let errorMsg = `HTTP ${xhr.status}`;
           try {
             const errorResponse = JSON.parse(xhr.responseText);
-            reject(new Error(errorResponse.error || errorResponse.message || `上传失败: ${xhr.status}`));
+            errorMsg = errorResponse.error || errorResponse.message || errorResponse.Message || errorMsg;
           } catch {
-            reject(new Error(`上传失败: ${xhr.statusText || xhr.status}`));
+            if (xhr.statusText) {
+              errorMsg = xhr.statusText;
+            }
           }
+          reject(new Error(errorMsg));
         }
       });
 
       xhr.addEventListener("error", () => {
-        console.error("[CrustShare] 网络错误");
-        reject(new Error("网络错误，请检查网络连接"));
+        reject(new Error("网络错误"));
       });
 
       xhr.addEventListener("abort", () => {
-        console.log("[CrustShare] 上传已取消");
         reject(new Error("上传已取消"));
       });
 
       xhr.addEventListener("timeout", () => {
-        console.error("[CrustShare] 上传超时");
         reject(new Error("上传超时"));
       });
 
@@ -114,21 +170,19 @@ export const uploadApi = {
       const formData = new FormData();
       formData.append("file", file);
       
-      // 直连 Crust API - 关键！
-      xhr.open("POST", CRUST_UPLOAD_API);
+      // 直连上传
+      xhr.open("POST", uploadUrl);
       xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       xhr.send(formData);
-      
-      console.log(`[CrustShare] 已发送上传请求到: ${CRUST_UPLOAD_API}`);
     });
   },
 
   /**
    * 创建存储订单
    */
-  async createOrder(cid: string, size: number, token: string): Promise<boolean> {
+  async createOrder(cid: string, size: number, token: string, orderUrl: string): Promise<boolean> {
     try {
-      const response = await fetch(`${CRUST_ORDER_API}/${cid}/order`, {
+      const response = await fetch(`${orderUrl}/${cid}/order`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
