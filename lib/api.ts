@@ -680,6 +680,7 @@ export const gatewayApi = {
       retries?: number;
       samples?: number;
       testCid?: string;
+      signal?: AbortSignal;
     } = {}
   ): Promise<{
     available: boolean;
@@ -688,7 +689,7 @@ export const gatewayApi = {
     corsEnabled: boolean;
     rangeSupport: boolean;
   }> {
-    const { retries = 2, samples = 3, testCid = CONFIG.TEST_CID } = options;
+    const { retries = 2, samples = 3, testCid = CONFIG.TEST_CID, signal } = options;
     const testUrl = `${gateway.url}${testCid}`;
 
     const latencies: number[] = [];
@@ -698,11 +699,33 @@ export const gatewayApi = {
 
     // 多次采样测试
     for (let sample = 0; sample < samples; sample++) {
+      // 检查是否已取消
+      if (signal?.aborted) {
+        return {
+          available: false,
+          latency: Infinity,
+          reliability: 0,
+          corsEnabled: false,
+          rangeSupport: false,
+        };
+      }
+
       let sampleLatency = Infinity;
       let sampleSuccess = false;
 
       // 每次采样支持重试
       for (let attempt = 0; attempt <= retries; attempt++) {
+        // 检查是否已取消
+        if (signal?.aborted) {
+          return {
+            available: false,
+            latency: Infinity,
+            reliability: 0,
+            corsEnabled: false,
+            rangeSupport: false,
+          };
+        }
+
         if (attempt > 0) {
           await new Promise((r) => setTimeout(r, CONFIG.GATEWAY_TEST.RETRY_DELAY));
         }
@@ -714,12 +737,29 @@ export const gatewayApi = {
             CONFIG.GATEWAY_TEST.TIMEOUT
           );
 
+          // 合并外部 signal 和 timeout signal
+          let combinedSignal = controller.signal;
+          if (signal) {
+            // 如果外部已取消，直接返回
+            if (signal.aborted) {
+              clearTimeout(timeoutId);
+              return {
+                available: false,
+                latency: Infinity,
+                reliability: 0,
+                corsEnabled: false,
+                rangeSupport: false,
+              };
+            }
+            combinedSignal = signal;
+          }
+
           const startTime = performance.now();
 
           // 使用 HEAD 请求进行基础测试
           const response = await fetch(testUrl, {
             method: "HEAD",
-            signal: controller.signal,
+            signal: combinedSignal,
             headers: {
               Accept: "*/*",
             },
@@ -787,9 +827,10 @@ export const gatewayApi = {
     options: {
       onProgress?: (gateway: Gateway, result: Gateway) => void;
       priorityRegions?: string[];
+      signal?: AbortSignal;
     } = {}
   ): Promise<Gateway[]> {
-    const { onProgress, priorityRegions = ["CN", "INTL"] } = options;
+    const { onProgress, priorityRegions = ["CN", "INTL"], signal } = options;
     const results: Gateway[] = [];
     const maxConcurrency = CONFIG.GATEWAY_TEST.CONCURRENT_LIMIT;
 
@@ -808,13 +849,24 @@ export const gatewayApi = {
     const executing: Set<Promise<void>> = new Set();
 
     const processGateway = async (gateway: Gateway): Promise<void> => {
+      // 检查是否已取消
+      if (signal?.aborted) {
+        return;
+      }
+
       // 根据网关历史表现调整测试参数
       const testOptions: Parameters<typeof this.testGateway>[1] = {
         retries: gateway.consecutiveFailures && gateway.consecutiveFailures > 2 ? 1 : 2,
         samples: gateway.healthScore && gateway.healthScore < 50 ? 2 : 3,
+        signal,
       };
 
       const result = await this.testGateway(gateway, testOptions);
+
+      // 如果测试被取消，不再处理结果
+      if (signal?.aborted) {
+        return;
+      }
 
       // 计算健康度评分
       const healthScore = this.calculateHealthScore(gateway, result);
@@ -839,10 +891,10 @@ export const gatewayApi = {
       onProgress?.(gateway, gatewayResult);
     };
 
-    // 持续处理直到队列为空且所有任务完成
-    while (queue.length > 0 || executing.size > 0) {
+    // 持续处理直到队列为空且所有任务完成，或者被取消
+    while ((queue.length > 0 || executing.size > 0) && !signal?.aborted) {
       // 启动新任务直到达到并发上限或队列为空
-      while (executing.size < maxConcurrency && queue.length > 0) {
+      while (executing.size < maxConcurrency && queue.length > 0 && !signal?.aborted) {
         const gateway = queue.shift()!;
         const promise = processGateway(gateway).finally(() => {
           executing.delete(promise);
@@ -854,6 +906,12 @@ export const gatewayApi = {
       if (executing.size > 0) {
         await Promise.race(executing);
       }
+    }
+
+    // 如果被取消，返回已测试的结果
+    if (signal?.aborted) {
+      // 等待所有正在执行的任务完成
+      await Promise.allSettled(executing);
     }
 
     // 排序：可用性 > 健康度 > 延迟 > 区域优先级
@@ -961,9 +1019,15 @@ export const gatewayApi = {
     options: {
       onProgress?: (gateway: Gateway, result: Gateway) => void;
       priorityRegions?: string[];
+      signal?: AbortSignal;
     } = {}
   ): Promise<Gateway[]> {
-    const { onProgress, priorityRegions } = options;
+    const { onProgress, priorityRegions, signal } = options;
+
+    // 检查是否已取消
+    if (signal?.aborted) {
+      return [];
+    }
 
     // 加载历史健康度数据
     const healthHistory = this.loadHealthHistory();
@@ -997,16 +1061,23 @@ export const gatewayApi = {
     // 如果没有缓存或没有可用网关，执行检测
     const allGateways = [...CONFIG.DEFAULT_GATEWAYS];
 
-    // 从公共网关源获取更多网关
-    try {
-      const publicGateways = await this.fetchPublicGateways();
-      publicGateways.forEach((publicGateway) => {
-        if (!allGateways.find((g) => g.url === publicGateway.url)) {
-          allGateways.push(publicGateway);
-        }
-      });
-    } catch {
-      console.warn("获取公共网关列表失败，使用默认网关");
+    // 从公共网关源获取更多网关（如果未被取消）
+    if (!signal?.aborted) {
+      try {
+        const publicGateways = await this.fetchPublicGateways();
+        publicGateways.forEach((publicGateway) => {
+          if (!allGateways.find((g) => g.url === publicGateway.url)) {
+            allGateways.push(publicGateway);
+          }
+        });
+      } catch {
+        console.warn("获取公共网关列表失败，使用默认网关");
+      }
+    }
+
+    // 检查是否已取消
+    if (signal?.aborted) {
+      return [];
     }
 
     // 添加自定义网关
@@ -1026,7 +1097,13 @@ export const gatewayApi = {
     const results = await this.testAllGateways(gatewaysWithHistory, {
       onProgress,
       priorityRegions,
+      signal,
     });
+
+    // 如果被取消，返回已测试的结果（不保存）
+    if (signal?.aborted) {
+      return results;
+    }
 
     // 保存结果和健康度历史
     this.cacheResults(results);

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { gatewayApi } from "@/lib/api";
 import { useGatewayStore, useUIStore } from "@/lib/store";
 import { handleError } from "@/lib/error-handler";
@@ -21,6 +21,7 @@ export interface GatewayState {
 
 export interface GatewayOperations {
   testGateways: () => Promise<void>;
+  cancelTest: () => void;
   fetchPublicGateways: () => Promise<void>;
   addCustomGateway: (gateway: Omit<Gateway, 'icon' | 'priority'>) => Promise<void>;
   removeCustomGateway: (name: string) => void;
@@ -43,10 +44,22 @@ export function useGateway(): GatewayState & GatewayOperations {
   const [isTesting, setIsTesting] = useState(false);
   const [isFetchingPublic, setIsFetchingPublic] = useState(false);
   const [lastTestTime, setLastTestTime] = useState<number | null>(null);
+  
+  // 用于取消测试的 AbortController
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // 测试所有网关
   const testGateways = useCallback(async () => {
     if (isTesting) return;
+
+    // 取消之前的测试（如果有）
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // 创建新的 AbortController
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     setIsTesting(true);
     setStoreIsTesting(true);
@@ -59,7 +72,15 @@ export function useGateway(): GatewayState & GatewayOperations {
           console.log(`网关 ${gateway.name}: ${result.available ? '可用' : '不可用'}, 延迟 ${result.latency}ms, 可靠性 ${result.reliability}%`);
         },
         priorityRegions: ["CN", "INTL"],
+        signal: abortController.signal,
       });
+      
+      // 检查是否被取消
+      if (abortController.signal.aborted) {
+        showToast("网关测试已取消", "warning");
+        return;
+      }
+      
       setGateways(results);
       const now = Date.now();
       setLastTestTime(now);
@@ -73,12 +94,29 @@ export function useGateway(): GatewayState & GatewayOperations {
         "success"
       );
     } catch (error) {
+      // 如果是取消导致的错误，不显示错误提示
+      if (abortController.signal.aborted) {
+        showToast("网关测试已取消", "warning");
+        return;
+      }
       handleError(error, { showToast });
     } finally {
       setIsTesting(false);
       setStoreIsTesting(false);
+      abortControllerRef.current = null;
     }
   }, [customGateways, isTesting, setGateways, setStoreIsTesting, setStoreLastTestTime, showToast]);
+  
+  // 取消网关测试
+  const cancelTest = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsTesting(false);
+      setStoreIsTesting(false);
+      showToast("正在取消网关测试...", "warning");
+    }
+  }, [setStoreIsTesting, showToast]);
 
   // 获取公共网关列表
   const fetchPublicGateways = useCallback(async () => {
@@ -226,6 +264,7 @@ export function useGateway(): GatewayState & GatewayOperations {
     lastTestTime,
     // 操作
     testGateways,
+    cancelTest,
     fetchPublicGateways,
     addCustomGateway,
     removeCustomGateway,

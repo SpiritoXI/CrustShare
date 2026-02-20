@@ -106,6 +106,7 @@ export default function DashboardPage() {
     handlePreview,
     handleClosePreview,
     handleTestGateways,
+    handleCancelTestGateways,
     handleRefreshGateways,
     handleFetchPublicGateways,
     handleTestSingleGateway,
@@ -171,6 +172,7 @@ export default function DashboardPage() {
         onUploadClick={() => fileInputRef.current?.click()}
         onAddCidClick={() => setAddCidModalOpen(true)}
         onTestGateways={handleTestGateways}
+        onCancelTestGateways={handleCancelTestGateways}
         onFolderSelect={(folderId) => {
           setCurrentFolderId(folderId);
         }}

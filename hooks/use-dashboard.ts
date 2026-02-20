@@ -77,6 +77,9 @@ export function useDashboard() {
   // 使用 ref 来防止重复加载（在严格模式下使用初始化标记）
   const dataLoadedRef = useRef(false);
   const isLoadingRef = useRef(false);
+  
+  // 用于取消网关测试的 AbortController
+  const testAbortControllerRef = useRef<AbortController | null>(null);
 
   // Load data and settings from localStorage and server
   useEffect(() => {
@@ -321,35 +324,91 @@ export function useDashboard() {
 
     // 如果已经在检测中，不重复执行
     if (isTestingGateways) return;
+    
+    // 取消之前的测试（如果有）
+    if (testAbortControllerRef.current) {
+      testAbortControllerRef.current.abort();
+    }
+    
+    // 创建新的 AbortController
+    const abortController = new AbortController();
+    testAbortControllerRef.current = abortController;
 
     setIsTestingGateways(true);
     try {
       // 如果 gateways 为空，使用默认网关
       const allGateways = gateways.length > 0 ? [...gateways] : [...CONFIG.DEFAULT_GATEWAYS];
-      const results = await gatewayApi.testAllGateways(allGateways);
+      const results = await gatewayApi.testAllGateways(allGateways, {
+        signal: abortController.signal,
+      });
+      
+      // 检查是否被取消
+      if (abortController.signal.aborted) {
+        showToast("网关测试已取消", "warning");
+        return;
+      }
+      
       setGateways(results);
       gatewayApi.cacheResults(results);
       showToast("网关测试完成", "success");
-    } catch {
+    } catch (error) {
+      // 如果是取消导致的错误，不显示错误提示
+      if (abortController.signal.aborted) {
+        showToast("网关测试已取消", "warning");
+        return;
+      }
       showToast("测试网关失败", "error");
     } finally {
       setIsTestingGateways(false);
+      testAbortControllerRef.current = null;
     }
   }, [gateways, setGateways, showToast, isTestingGateways]);
+  
+  // Handle cancel test gateways
+  const handleCancelTestGateways = useCallback(() => {
+    if (testAbortControllerRef.current) {
+      testAbortControllerRef.current.abort();
+      testAbortControllerRef.current = null;
+      setIsTestingGateways(false);
+      showToast("正在取消网关测试...", "warning");
+    }
+  }, [showToast]);
 
   // Handle refresh gateways
   const handleRefreshGateways = useCallback(async () => {
+    // 取消之前的测试（如果有）
+    if (testAbortControllerRef.current) {
+      testAbortControllerRef.current.abort();
+    }
+    
+    // 创建新的 AbortController
+    const abortController = new AbortController();
+    testAbortControllerRef.current = abortController;
+    
     setIsTestingGateways(true);
     try {
       // 如果 gateways 为空，使用默认网关
       const allGateways = gateways.length > 0 ? [...gateways] : [...CONFIG.DEFAULT_GATEWAYS];
-      const results = await gatewayApi.testAllGateways(allGateways);
+      const results = await gatewayApi.testAllGateways(allGateways, {
+        signal: abortController.signal,
+      });
+      
+      // 检查是否被取消
+      if (abortController.signal.aborted) {
+        return;
+      }
+      
       setGateways(results);
       gatewayApi.cacheResults(results);
-    } catch {
+    } catch (error) {
+      // 如果是取消导致的错误，不显示错误提示
+      if (abortController.signal.aborted) {
+        return;
+      }
       showToast("刷新网关失败", "error");
     } finally {
       setIsTestingGateways(false);
+      testAbortControllerRef.current = null;
     }
   }, [gateways, setGateways, showToast]);
 
@@ -826,6 +885,7 @@ export function useDashboard() {
     handlePreview,
     handleClosePreview,
     handleTestGateways,
+    handleCancelTestGateways,
     handleRefreshGateways,
     handleFetchPublicGateways,
     handleTestSingleGateway,

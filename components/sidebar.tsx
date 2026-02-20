@@ -28,6 +28,7 @@ interface SidebarProps {
   onUploadClick: () => void;
   onAddCidClick: () => void;
   onTestGateways: () => void;
+  onCancelTestGateways: () => void;
   onFolderSelect: (folderId: string | null) => void;
   onCreateFolder: () => void;
   onEditFolder: (folder: FolderType) => void;
@@ -46,6 +47,7 @@ export function Sidebar({
   onUploadClick,
   onAddCidClick,
   onTestGateways,
+  onCancelTestGateways,
   onFolderSelect,
   onCreateFolder,
   onEditFolder,
@@ -99,11 +101,10 @@ export function Sidebar({
           <Button
             variant="ghost"
             className="w-full justify-start"
-            onClick={onTestGateways}
-            disabled={isTestingGateways}
+            onClick={isTestingGateways ? onCancelTestGateways : onTestGateways}
           >
             <Globe className="mr-2 h-4 w-4" />
-            {isTestingGateways ? "检测中..." : "网关检测"}
+            {isTestingGateways ? "停止检测" : "网关检测"}
           </Button>
         </nav>
 
