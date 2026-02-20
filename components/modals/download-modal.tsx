@@ -282,7 +282,7 @@ export function DownloadModal({
               </motion.div>
             )}
 
-            <div className="space-y-2 max-h-48 overflow-y-auto mb-4">
+            <div className="space-y-2 mb-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">可用网关:</p>
                 {hasGateways && (
@@ -292,64 +292,68 @@ export function DownloadModal({
                 )}
               </div>
 
-              {!hasGateways ? (
-                <div className="text-center py-4">
-                  <p className="text-sm text-muted-foreground mb-2">暂无网关数据</p>
-                  <Button size="sm" onClick={onTestGateways}>
-                    <RefreshCw className="h-4 w-4 mr-1" />
-                    检测网关
-                  </Button>
-                </div>
-              ) : availableGateways.length === 0 ? (
-                <div className="text-center py-4">
-                  <p className="text-sm text-muted-foreground mb-2">暂无可用网关</p>
-                  <Button size="sm" onClick={onTestGateways}>
-                    <RefreshCw className="h-4 w-4 mr-1" />
-                    重新检测
-                  </Button>
-                </div>
-              ) : (
-                availableGateways
-                  .sort((a, b) => ((a.healthScore || 0) - (b.healthScore || 0)) || 
-                               ((a.latency || Infinity) - (b.latency || Infinity)))
-                  .slice(0, 8)
-                  .map((gateway, index) => (
-                    <motion.div
-                      key={gateway.name}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <Button
-                        variant="ghost"
-                        className={`w-full justify-between ${
-                          bestGateway?.name === gateway.name ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : ''
-                        }`}
-                        onClick={() => startDownloadWithGateway(gateway)}
-                        disabled={isMultiTesting}
-                      >
-                        <div className="flex items-center">
-                          <span className="text-xl mr-2">{gateway.icon}</span>
-                          <div className="text-left">
-                            <p className="font-medium text-sm">{gateway.name}</p>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span>{gateway.region === 'CN' ? '🇨🇳' : '🌍'}</span>
-                              {gateway.healthScore && (
-                                <span className={gateway.healthScore >= 70 ? 'text-green-600' : gateway.healthScore >= 40 ? 'text-yellow-600' : 'text-red-600'}>
-                                  健康 {gateway.healthScore}
-                                </span>
-                              )}
+              <div className="max-h-64 overflow-y-auto border rounded-lg">
+                {!hasGateways ? (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground mb-2">暂无网关数据</p>
+                    <Button size="sm" onClick={onTestGateways}>
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      检测网关
+                    </Button>
+                  </div>
+                ) : availableGateways.length === 0 ? (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground mb-2">暂无可用网关</p>
+                    <Button size="sm" onClick={onTestGateways}>
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      重新检测
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {availableGateways
+                      .sort((a, b) => ((a.healthScore || 0) - (b.healthScore || 0)) || 
+                                   ((a.latency || Infinity) - (b.latency || Infinity)))
+                      .slice(0, 8)
+                      .map((gateway, index) => (
+                        <motion.div
+                          key={gateway.name}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                        >
+                          <Button
+                            variant="ghost"
+                            className={`w-full justify-between rounded-none h-auto py-3 px-4 ${
+                              bestGateway?.name === gateway.name ? 'bg-green-50 dark:bg-green-900/20' : ''
+                            }`}
+                            onClick={() => startDownloadWithGateway(gateway)}
+                            disabled={isMultiTesting}
+                          >
+                            <div className="flex items-center">
+                              <span className="text-xl mr-2">{gateway.icon}</span>
+                              <div className="text-left">
+                                <p className="font-medium text-sm">{gateway.name}</p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>{gateway.region === 'CN' ? '🇨🇳' : '🌍'}</span>
+                                  {gateway.healthScore && (
+                                    <span className={gateway.healthScore >= 70 ? 'text-green-600' : gateway.healthScore >= 40 ? 'text-yellow-600' : 'text-red-600'}>
+                                      健康 {gateway.healthScore}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-green-600 font-medium">{gateway.latency}ms</span>
-                          <Download className="h-4 w-4" />
-                        </div>
-                      </Button>
-                    </motion.div>
-                  ))
-              )}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-green-600 font-medium">{gateway.latency}ms</span>
+                              <Download className="h-4 w-4" />
+                            </div>
+                          </Button>
+                        </motion.div>
+                      ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2 pt-2 border-t">

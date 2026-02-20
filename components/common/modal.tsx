@@ -43,10 +43,10 @@ export function Modal({
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className={`bg-white rounded-2xl shadow-2xl ${maxWidthClasses[maxWidth]} w-full max-h-[80vh] flex flex-col`}
+            className={`bg-white dark:bg-slate-900 rounded-2xl shadow-2xl ${maxWidthClasses[maxWidth]} w-full max-h-[85vh] flex flex-col`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-6 border-b">
+            <div className="flex items-center justify-between p-6 border-b shrink-0">
               <div>{title}</div>
               {showCloseButton && (
                 <Button variant="ghost" size="icon" onClick={onClose}>
@@ -54,7 +54,7 @@ export function Modal({
                 </Button>
               )}
             </div>
-            <div className="flex-1 overflow-auto p-6">{children}</div>
+            <div className="flex-1 overflow-y-auto p-6 min-h-0">{children}</div>
           </motion.div>
         </motion.div>
       )}
