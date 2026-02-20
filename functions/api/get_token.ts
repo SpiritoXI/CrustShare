@@ -17,8 +17,8 @@ export async function onRequestOptions(): Promise<Response> {
 /**
  * 获取上传令牌
  * 
- * 注意：CRUST_ACCESS_TOKEN 在后端直接使用，不需要传递给前端
- * 此 API 仅用于兼容前端调用，返回成功状态即可
+ * 返回 CRUST_ACCESS_TOKEN 用于前端直连上传
+ * 这样可以避免代理服务器的大小限制（413 错误）
  */
 export async function onRequestGet(context: Context): Promise<Response> {
   const { request, env } = context;
@@ -40,11 +40,12 @@ export async function onRequestGet(context: Context): Promise<Response> {
     );
   }
 
-  // 返回成功响应（token 在后端使用，不传递给前端）
+  // 返回真实的 CRUST_ACCESS_TOKEN
+  // 用于前端直连上传，避免代理服务器大小限制
   return new Response(
     JSON.stringify({ 
       success: true, 
-      data: { token: "authenticated" } 
+      data: { token: env.CRUST_ACCESS_TOKEN } 
     } as ApiResponse<{ token: string }>),
     { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
   );
