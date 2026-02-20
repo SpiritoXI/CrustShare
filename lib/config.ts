@@ -27,25 +27,28 @@ export const API = {
 
 /**
  * Crust Network 配置
+ * 
+ * 🎉 crustfiles.io 提供 Developer Profile 免费永久存储服务！
+ * 
+ * 特点：
+ * - 完全免费，无需 CRU 代币
+ * - 永久存储，文件不会丢失
+ * - 只需 Developer Profile Access Token 即可使用
+ * - 后端自动处理文件存储和续期
+ * 
+ * 使用方式：
+ * 1. 访问 https://crustfiles.io 创建 Developer Profile
+ * 2. 获取 Access Token（格式：Base64 编码的 substrate-{私钥}:{地址}）
+ * 3. 调用上传 API 即可永久存储文件
  */
 export const CRUST = {
+  // 上传 API - 使用 Access Token 认证
   UPLOAD_API: 'https://gw.crustfiles.app/api/v0/add?pin=true',
-  // 存储订单 API - 这是实现永久存储的关键！
+  // 存储订单 API（crustfiles.io 后端自动处理，无需额外付费）
   ORDER_API: 'https://gw.crustfiles.app/crust/api/v1/files',
   TEST_CID: 'bafkreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52zy',
-  /**
-   * 存储时长配置
-   * 
-   * 重要说明：
-   * - Crust 存储订单默认有效期为 180 天（约 6 个月）
-   * - months 参数用于计算存入"续期池"的 CRU 数量
-   * - 续期池余额充足时，订单到期会自动续期
-   * - 设置 months = 1200 意味着存入约 100 年的续期费用
-   * 
-   * 参考：https://wiki.crust.network/docs/en/orderSettlement
-   */
-  // 永久存储：1200 个月 = 100 年（实际是续期池金额计算）
-  DEFAULT_STORAGE_MONTHS: 1200,  // 永久存储配置
+  // 存储配置（crustfiles.io 免费模式下此参数可能不影响实际存储）
+  DEFAULT_STORAGE_MONTHS: 1200,
 } as const;
 
 /**

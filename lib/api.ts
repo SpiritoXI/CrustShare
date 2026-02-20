@@ -409,24 +409,18 @@ export const api = {
 
 export const uploadApi = {
   /**
-   * 创建存储订单 - 实现永久存储
+   * 创建存储订单
    * 
-   * 技术原理：
-   * - Crust 存储订单默认有效期：180 天（约 6 个月）
-   * - months 参数用于计算存入"续期池"的 CRU 数量
-   * - 续期池机制：订单到期时，如果续期池有足够余额，会自动续期 180 天
-   * - 结算者会获得续期奖励，激励他人帮助续期
+   * 🎉 crustfiles.io 提供 Developer Profile 免费永久存储！
    * 
-   * 永久存储方案：
-   * - 设置 months = 1200（约 100 年的续期费用）
-   * - 实际存储时间取决于续期池余额和网络状况
-   * - 用户也可以后续向续期池添加更多 CRU
+   * 工作原理：
+   * - crustfiles.io 后端使用 Access Token 中的私钥自动签名
+   * - 文件上传后会被永久存储，无需支付任何费用
+   * - 无需拥有 CRU 代币
    * 
    * 要求：
-   * - Access Token 包含私钥，crustfiles.io 后端用此签名链上交易
-   * - 需要账户有足够的 CRU 余额
-   * 
-   * 参考：https://wiki.crust.network/docs/en/orderSettlement
+   * - 需要有效的 Developer Profile Access Token
+   * - Token 格式：Base64 编码的 substrate-{私钥}:{地址}
    */
   async createStorageOrder(
     cid: string,
@@ -437,9 +431,8 @@ export const uploadApi = {
     try {
       const orderUrl = `${CONFIG.CRUST.ORDER_API}/${cid}/order`;
       
-      console.log(`[Crust] 创建存储订单（永久存储）: ${cid}`);
+      console.log(`[Crust] 创建存储订单（免费永久存储）: ${cid}`);
       console.log(`[Crust] 文件大小: ${size} bytes`);
-      console.log(`[Crust] 续期池月数: ${months} 个月（约 ${Math.floor(months * 180 / 365)} 年）`);
       
       const response = await fetch(orderUrl, {
         method: 'POST',
@@ -455,8 +448,8 @@ export const uploadApi = {
       });
 
       if (response.ok) {
-        console.log(`[Crust] ✅ 存储订单创建成功！文件将被永久存储（续期池已充值）`);
-        return { success: true, message: '存储订单创建成功，续期池已充值' };
+        console.log(`[Crust] ✅ 存储订单创建成功！文件将被永久存储（免费）`);
+        return { success: true, message: '存储订单创建成功' };
       } else {
         const errorText = await response.text().catch(() => '');
         console.warn(`[Crust] 存储订单创建失败: ${response.status} - ${errorText}`);
