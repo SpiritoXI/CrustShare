@@ -1,20 +1,31 @@
 import { CONFIG, API } from "../config";
 import { secureFetch } from "./base";
 
-// Crust API 端点
+// Crust API 端点 - 直连上传
 const CRUST_UPLOAD_API = 'https://gw.crustfiles.app/api/v0/add?pin=true';
 const CRUST_ORDER_API = 'https://gw.crustfiles.app/crust/api/v1/files';
+
+// 上传版本号 - 用于确认代码是否更新
+const UPLOAD_VERSION = '3.3.2-direct';
 
 export const uploadApi = {
   /**
    * 直连上传到 Crust API
    * 避免代理服务器的大小限制
+   * 
+   * 版本: 3.3.2-direct
+   * 端点: https://gw.crustfiles.app/api/v0/add
    */
   async uploadToCrust(
     file: File,
     token: string,
     onProgress: (progress: number) => void
   ): Promise<{ cid: string; size: number; hash?: string; orderCreated?: boolean }> {
+    // 调试信息 - 确认使用直连上传
+    console.log(`[CrustShare v${UPLOAD_VERSION}] 直连上传到 Crust API`);
+    console.log(`[CrustShare] 上传端点: ${CRUST_UPLOAD_API}`);
+    console.log(`[CrustShare] 文件名: ${file.name}, 大小: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+    
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
 
@@ -26,17 +37,24 @@ export const uploadApi = {
       });
 
       xhr.addEventListener("load", () => {
+        console.log(`[CrustShare] 上传响应状态: ${xhr.status}`);
+        
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const response = JSON.parse(xhr.responseText);
+            console.log(`[CrustShare] 上传响应:`, response);
+            
             // Crust API 返回 { Hash, Size }
             if (response.Hash) {
               const cid = response.Hash;
               const size = response.Size || file.size;
               
+              console.log(`[CrustShare] 上传成功! CID: ${cid}`);
+              
               // 上传成功后，创建存储订单
               this.createOrder(cid, size, token)
                 .then((orderCreated) => {
+                  console.log(`[CrustShare] 存储订单创建: ${orderCreated ? '成功' : '跳过'}`);
                   resolve({
                     cid,
                     size,
@@ -46,7 +64,7 @@ export const uploadApi = {
                 })
                 .catch((err) => {
                   // 订单创建失败不影响上传结果
-                  console.warn("创建存储订单失败:", err);
+                  console.warn("[CrustShare] 创建存储订单失败:", err);
                   resolve({
                     cid,
                     size,
@@ -54,14 +72,19 @@ export const uploadApi = {
                     orderCreated: false,
                   });
                 });
+            } else if (response.error) {
+              console.error(`[CrustShare] 上传失败: ${response.error}`);
+              reject(new Error(response.error));
             } else {
-              reject(new Error(response.error || "上传失败：无效响应"));
+              console.error(`[CrustShare] 无效响应:`, response);
+              reject(new Error("上传失败：无效响应"));
             }
           } catch (parseError) {
-            console.error("解析上传响应失败:", parseError, xhr.responseText);
+            console.error("[CrustShare] 解析响应失败:", parseError, xhr.responseText);
             reject(new Error("解析响应失败"));
           }
         } else {
+          console.error(`[CrustShare] 上传失败: ${xhr.status} ${xhr.statusText}`);
           try {
             const errorResponse = JSON.parse(xhr.responseText);
             reject(new Error(errorResponse.error || errorResponse.message || `上传失败: ${xhr.status}`));
@@ -72,14 +95,17 @@ export const uploadApi = {
       });
 
       xhr.addEventListener("error", () => {
+        console.error("[CrustShare] 网络错误");
         reject(new Error("网络错误，请检查网络连接"));
       });
 
       xhr.addEventListener("abort", () => {
+        console.log("[CrustShare] 上传已取消");
         reject(new Error("上传已取消"));
       });
 
       xhr.addEventListener("timeout", () => {
+        console.error("[CrustShare] 上传超时");
         reject(new Error("上传超时"));
       });
 
@@ -88,10 +114,12 @@ export const uploadApi = {
       const formData = new FormData();
       formData.append("file", file);
       
-      // 直连 Crust API
+      // 直连 Crust API - 关键！
       xhr.open("POST", CRUST_UPLOAD_API);
       xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       xhr.send(formData);
+      
+      console.log(`[CrustShare] 已发送上传请求到: ${CRUST_UPLOAD_API}`);
     });
   },
 
