@@ -33,8 +33,19 @@ export const CRUST = {
   // 存储订单 API - 这是实现永久存储的关键！
   ORDER_API: 'https://gw.crustfiles.app/crust/api/v1/files',
   TEST_CID: 'bafkreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52zy',
-  // 默认存储月数
-  DEFAULT_STORAGE_MONTHS: 12,
+  /**
+   * 存储时长配置
+   * 
+   * 重要说明：
+   * - Crust 存储订单默认有效期为 180 天（约 6 个月）
+   * - months 参数用于计算存入"续期池"的 CRU 数量
+   * - 续期池余额充足时，订单到期会自动续期
+   * - 设置 months = 1200 意味着存入约 100 年的续期费用
+   * 
+   * 参考：https://wiki.crust.network/docs/en/orderSettlement
+   */
+  // 永久存储：1200 个月 = 100 年（实际是续期池金额计算）
+  DEFAULT_STORAGE_MONTHS: 1200,  // 永久存储配置
 } as const;
 
 /**
