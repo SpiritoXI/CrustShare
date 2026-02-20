@@ -576,35 +576,54 @@ interface LightboxProps {
 }
 
 export function Lightbox({ isOpen, onClose, cid, filename, gateways, onDownload }: LightboxProps) {
+  // 阻止背景滚动
   useEffect(() => {
     if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  // 按 ESC 关闭
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black"
-      >
-        <ImageViewer
-          cid={cid}
-          filename={filename}
-          gateways={gateways}
-          onClose={onClose}
-          onDownload={onDownload}
-        />
-      </motion.div>
+      {isOpen && (
+        <motion.div
+          key="lightbox"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={(e) => {
+            // 点击背景关闭
+            if (e.target === e.currentTarget) {
+              onClose();
+            }
+          }}
+        >
+          <ImageViewer
+            cid={cid}
+            filename={filename}
+            gateways={gateways}
+            onClose={onClose}
+            onDownload={onDownload}
+          />
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 }

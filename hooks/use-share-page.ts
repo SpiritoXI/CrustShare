@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { gatewayApi, shareApi } from "@/lib/api";
 import { CONFIG } from "@/lib/config";
 import { useGatewayStore } from "@/lib/store";
@@ -40,8 +40,6 @@ export function useSharePage(cid: string) {
   const [gatewayTestStatus, setGatewayTestStatus] = useState<
     Map<string, "pending" | "testing" | "success" | "failed">
   >(new Map());
-  
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // 获取所有网关
   const getAllGateways = useCallback(async () => {
@@ -202,43 +200,71 @@ export function useSharePage(cid: string) {
   const handleDownload = useCallback(() => {
     if (!selectedGateway) return;
 
+    const url = `${selectedGateway.url}${cid}`;
+    const filename = shareInfo?.filename || `file-${cid.slice(0, 8)}`;
+
+    // 使用 fetch + blob 下载，避免打开新窗口
     setIsDownloading(true);
     setDownloadProgress(0);
 
-    const url = `${selectedGateway.url}${cid}`;
-
-    progressIntervalRef.current = setInterval(() => {
-      setDownloadProgress((prev) => {
-        if (prev >= 90) {
-          if (progressIntervalRef.current) {
-            clearInterval(progressIntervalRef.current);
-            progressIntervalRef.current = null;
+    fetch(url)
+      .then(response => {
+        if (!response.ok) throw new Error('下载失败');
+        const contentLength = response.headers.get('content-length');
+        const total = contentLength ? parseInt(contentLength, 10) : 0;
+        
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('无法读取响应');
+        
+        const chunks: Uint8Array[] = [];
+        let received = 0;
+        
+        const pump = (): Promise<void> => {
+          return reader.read().then(({ done, value }) => {
+            if (done) {
+              setDownloadProgress(100);
+              return;
+            }
+            if (value) chunks.push(value);
+            received += value?.length || 0;
+            if (total > 0) {
+              setDownloadProgress(Math.round((received / total) * 100));
+            }
+            return pump();
+          });
+        };
+        
+        return pump().then(() => {
+          // 合并所有 chunks
+          const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+          const combinedArray = new Uint8Array(totalLength);
+          let offset = 0;
+          for (const chunk of chunks) {
+            combinedArray.set(chunk, offset);
+            offset += chunk.length;
           }
-          return 90;
-        }
-        return prev + 10;
+          const blob = new Blob([combinedArray]);
+          const blobUrl = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(blobUrl);
+        });
+      })
+      .catch(error => {
+        console.error('下载失败:', error);
+        // 降级方案：直接打开链接
+        window.open(url, '_blank');
+      })
+      .finally(() => {
+        setTimeout(() => {
+          setIsDownloading(false);
+          setDownloadProgress(0);
+        }, 500);
       });
-    }, 200);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = shareInfo?.filename || `file-${cid.slice(0, 8)}`;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setTimeout(() => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-        progressIntervalRef.current = null;
-      }
-      setDownloadProgress(100);
-      setTimeout(() => {
-        setIsDownloading(false);
-        setDownloadProgress(0);
-      }, 1000);
-    }, 2000);
   }, [cid, selectedGateway, shareInfo?.filename]);
 
   // 智能下载
@@ -262,36 +288,69 @@ export function useSharePage(cid: string) {
 
       if (result) {
         setSelectedGateway(result.gateway);
+        const filename = shareInfo?.filename || `file-${cid.slice(0, 8)}`;
 
         setIsDownloading(true);
         setDownloadProgress(0);
 
-        const progressInterval = setInterval(() => {
-          setDownloadProgress((prev) => {
-            if (prev >= 90) {
-              clearInterval(progressInterval);
-              return 90;
-            }
-            return prev + 10;
+        // 使用 fetch + blob 下载
+        fetch(result.url)
+          .then(response => {
+            if (!response.ok) throw new Error('下载失败');
+            const contentLength = response.headers.get('content-length');
+            const total = contentLength ? parseInt(contentLength, 10) : 0;
+            
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error('无法读取响应');
+            
+            const chunks: Uint8Array[] = [];
+            let received = 0;
+            
+            const pump = (): Promise<void> => {
+              return reader.read().then(({ done, value }) => {
+                if (done) {
+                  setDownloadProgress(100);
+                  return;
+                }
+                if (value) chunks.push(value);
+                received += value?.length || 0;
+                if (total > 0) {
+                  setDownloadProgress(Math.round((received / total) * 100));
+                }
+                return pump();
+              });
+            };
+            
+            return pump().then(() => {
+              // 合并所有 chunks
+              const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+              const combinedArray = new Uint8Array(totalLength);
+              let offset = 0;
+              for (const chunk of chunks) {
+                combinedArray.set(chunk, offset);
+                offset += chunk.length;
+              }
+              const blob = new Blob([combinedArray]);
+              const blobUrl = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = blobUrl;
+              link.download = filename;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(blobUrl);
+            });
+          })
+          .catch(error => {
+            console.error('下载失败:', error);
+            window.open(result.url, '_blank');
+          })
+          .finally(() => {
+            setTimeout(() => {
+              setIsDownloading(false);
+              setDownloadProgress(0);
+            }, 500);
           });
-        }, 200);
-
-        const link = document.createElement("a");
-        link.href = result.url;
-        link.download = shareInfo?.filename || `file-${cid.slice(0, 8)}`;
-        link.target = "_blank";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        setTimeout(() => {
-          clearInterval(progressInterval);
-          setDownloadProgress(100);
-          setTimeout(() => {
-            setIsDownloading(false);
-            setDownloadProgress(0);
-          }, 1000);
-        }, 2000);
       } else {
         alert("无法找到可用网关，请手动选择");
       }
