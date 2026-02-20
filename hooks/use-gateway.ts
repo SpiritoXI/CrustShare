@@ -8,7 +8,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { gatewayApi } from "@/lib/api";
 import { useGatewayStore, useUIStore } from "@/lib/store";
-import { handleError } from "@/lib/error-handler";
+import { handleError } from "@/lib/utils/error";
 import type { Gateway, GatewayTestProgress, GatewayFilter, GatewaySortField, GatewaySortOrder, GatewayHealthTrend } from "@/types";
 
 export interface GatewayState {

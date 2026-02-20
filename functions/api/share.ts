@@ -1,5 +1,6 @@
 import type { ApiResponse, Env, Context } from "../../types";
-import { upstashCommand, verifyAuth, corsHeaders, handleCors, hashPassword } from "../../lib/upstash";
+import { upstashCommand, verifyAuth, corsHeaders, handleCors } from "../../lib/db/upstash";
+import { hashPassword } from "../../lib/utils/security";
 
 const SHARES_KEY = "crustshare_shares";
 

@@ -8,7 +8,7 @@
 import { useCallback, useState } from "react";
 import { api } from "@/lib/api";
 import { useFileStore, useUIStore } from "@/lib/store";
-import { handleError } from "@/lib/error-handler";
+import { handleError } from "@/lib/utils/error";
 import type { Folder } from "@/types";
 
 export interface FolderOperations {

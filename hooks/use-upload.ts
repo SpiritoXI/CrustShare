@@ -10,8 +10,8 @@ import { api, uploadApi, propagationApi } from "@/lib/api";
 import { CONFIG } from "@/lib/config";
 import { useFileStore, useUIStore, useGatewayStore } from "@/lib/store";
 import { generateId } from "@/lib/utils";
-import { isAllowedFileType, isSafeFilename, sanitizeFilename } from "@/lib/security";
-import { handleError } from "@/lib/error-handler";
+import { isAllowedFileType, isSafeFilename, sanitizeFilename } from "@/lib/utils/security";
+import { handleError } from "@/lib/utils/error";
 import type { FileRecord } from "@/types";
 
 export interface UploadState {

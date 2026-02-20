@@ -8,7 +8,7 @@
 import { useCallback } from "react";
 import { api } from "@/lib/api";
 import { useFileStore, useUIStore } from "@/lib/store";
-import { handleError } from "@/lib/error-handler";
+import { handleError } from "@/lib/utils/error";
 import type { FileRecord } from "@/types";
 
 export interface FileOperations {

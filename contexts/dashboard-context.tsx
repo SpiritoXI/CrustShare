@@ -6,7 +6,7 @@ import { uploadApi, api, gatewayApi } from "@/lib/api";
 import { CONFIG, FILE_EXTENSIONS } from "@/lib/config";
 import { useFileStore, useGatewayStore, useUIStore, useAuthStore } from "@/lib/store";
 import { generateId } from "@/lib/utils";
-import { isAllowedFileType, isSafeFilename, sanitizeFilename } from "@/lib/security";
+import { isAllowedFileType, isSafeFilename, sanitizeFilename } from "@/lib/utils/security";
 import { useGatewayManager } from "@/hooks/use-dashboard-gateway";
 import { useFolderManager } from "@/hooks/use-dashboard-folder";
 import { useCidManager } from "@/hooks/use-dashboard-cid";

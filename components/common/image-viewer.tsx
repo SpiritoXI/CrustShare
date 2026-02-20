@@ -23,7 +23,7 @@ import {
   SignalLow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { isImageFile, getImageMimeType } from "@/lib/utils";
+import { isImageFile, getMimeType } from "@/lib/utils";
 import type { Gateway } from "@/types";
 
 interface ImageViewerProps {

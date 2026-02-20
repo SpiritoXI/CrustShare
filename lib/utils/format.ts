@@ -130,3 +130,133 @@ export function isTextFile(filename: string): boolean {
   const ext = getFileExtension(filename);
   return ["txt", "md", "json", "js", "ts", "jsx", "tsx", "css", "html", "xml"].includes(ext);
 }
+
+export function formatFileSize(size: number): string {
+  return formatBytes(size);
+}
+
+export function getFileIcon(filename: string): string {
+  const ext = getFileExtension(filename);
+  
+  if (isImageFile(filename)) return "📷";
+  if (isVideoFile(filename)) return "🎥";
+  if (isAudioFile(filename)) return "🎵";
+  if (isPdfFile(filename)) return "📄";
+  if (isTextFile(filename)) return "📝";
+  if (ext === "json") return "🔧";
+  if (ext === "zip" || ext === "rar" || ext === "7z" || ext === "tar" || ext === "gz") return "📦";
+  
+  return "📄";
+}
+
+export function copyToClipboard(text: string): Promise<boolean> {
+  return navigator.clipboard.writeText(text)
+    .then(() => true)
+    .catch(() => {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        return successful;
+      } catch (err) {
+        document.body.removeChild(textArea);
+        return false;
+      }
+    });
+}
+
+export function extractCidFromInput(input: string): string {
+  // Remove IPFS prefixes
+  input = input.replace(/^ipfs:\/\//, '');
+  input = input.replace(/^\/ipfs\//, '');
+  
+  // Remove trailing slashes
+  input = input.trim().replace(/\/$/, '');
+  
+  // Extract CID (assuming it's the last part of the URL or the entire input)
+  const parts = input.split('/');
+  return parts[parts.length - 1];
+}
+
+export function validateCidFormat(cid: string): { valid: boolean; type: "v0" | "v1" | null; error?: string } {
+  // Basic CID validation
+  if (!cid || typeof cid !== 'string') {
+    return { valid: false, type: null, error: 'CID不能为空' };
+  }
+  
+  // Check length (CID v0 is 46 chars, v1 varies but should be at least 32 chars)
+  if (cid.length < 32) {
+    return { valid: false, type: null, error: 'CID格式不正确' };
+  }
+  
+  // Check for valid CID v0 (starts with Qm)
+  if (cid.startsWith('Qm') && cid.length === 46) {
+    return { valid: true, type: "v0" };
+  }
+  
+  // Check for valid CID v1 (starts with bafy)
+  if (cid.startsWith('bafy') && cid.length >= 59) {
+    return { valid: true, type: "v1" };
+  }
+  
+  return { valid: false, type: null, error: 'CID格式不正确' };
+}
+
+export function inferFileType(filename: string): string {
+  const ext = getFileExtension(filename);
+  
+  if (isImageFile(filename)) return "图片";
+  if (isVideoFile(filename)) return "视频";
+  if (isAudioFile(filename)) return "音频";
+  if (isPdfFile(filename)) return "PDF文档";
+  if (isTextFile(filename)) return "文本文件";
+  if (ext === "json") return "JSON文件";
+  if (ext === "zip" || ext === "rar" || ext === "7z" || ext === "tar" || ext === "gz") return "压缩文件";
+  
+  return "其他文件";
+}
+
+export function isCodeFile(filename: string): boolean {
+  const ext = getFileExtension(filename);
+  return ["js", "ts", "jsx", "tsx", "css", "html", "xml", "json", "md", "yaml", "yml", "toml"].includes(ext);
+}
+
+export function getFileLanguage(filename: string): string {
+  const ext = getFileExtension(filename);
+  
+  const languageMap: Record<string, string> = {
+    js: "javascript",
+    ts: "typescript",
+    jsx: "jsx",
+    tsx: "tsx",
+    css: "css",
+    html: "html",
+    xml: "xml",
+    json: "json",
+    md: "markdown",
+    yaml: "yaml",
+    yml: "yaml",
+    toml: "toml",
+  };
+  
+  return languageMap[ext] || "text";
+}
+
+export function downloadFile(url: string, filename: string): void {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.target = '_blank';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
